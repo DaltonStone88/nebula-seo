@@ -2,9 +2,6 @@
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 
-export const metadata = {
-  title: 'Privacy Policy — NebulaSEO',
-}
 
 export default function Privacy() {
   const sections = [
