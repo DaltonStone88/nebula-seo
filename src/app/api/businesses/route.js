@@ -11,6 +11,10 @@ export async function GET() {
     where: { userId: session.user.id },
     include: {
       _count: { select: { reviews: true, posts: true, automations: true } },
+      rankAudits: {
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, keyword: true, avgRank: true, top3Percent: true, isBaseline: true, createdAt: true, gridSize: true },
+      },
     },
     orderBy: { createdAt: 'desc' },
   })
@@ -35,6 +39,11 @@ export async function POST(req) {
       website: body.website,
       category: body.category,
       placeId: body.placeId,
+      lat: body.lat,
+      lng: body.lng,
+      targetKeywords: body.targetKeywords || [],
+      targetCities: body.targetCities || [],
+      gridSize: body.gridSize || '7x7',
       userId: session.user.id,
     },
   })
