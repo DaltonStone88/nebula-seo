@@ -95,6 +95,16 @@ model Business {
   googleRefreshToken String? @db.Text
   googleTokenExpiry  DateTime?
 
+  // Location
+  lat         Float?
+  lng         Float?
+
+  // SEO Settings
+  targetCities   String[]
+  targetKeywords String[]
+  gridSize       String?  @default("7x7")
+  gridSpacing    String?  @default("medium")
+
   // Stats
   avgRating   Float?   @default(0)
   totalReviews Int?    @default(0)
@@ -151,6 +161,7 @@ model RankAudit {
   avgRank     Float
   top3Percent Float
   isBaseline  Boolean  @default(false)
+  gridSize    String?  @default("7x7")
 
   businessId  String
   business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
