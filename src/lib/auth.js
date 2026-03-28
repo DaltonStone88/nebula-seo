@@ -3,13 +3,11 @@ import GoogleProvider from 'next-auth/providers/google'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 
-function CustomPrismaAdapter(prisma) {
-  const adapter = PrismaAdapter(prisma)
+function CustomPrismaAdapter(p) {
+  const adapter = PrismaAdapter(p)
   return {
     ...adapter,
-    linkAccount: ({ refresh_token_expires_in, ...account }) => {
-      return adapter.linkAccount(account)
-    },
+    linkAccount: ({ refresh_token_expires_in, ...account }) => adapter.linkAccount(account),
   }
 }
 
@@ -23,38 +21,29 @@ export const authOptions = {
         params: {
           access_type: 'offline',
           prompt: 'consent',
-          scope: [
-            'openid',
-            'email',
-            'profile',
-            'https://www.googleapis.com/auth/business.manage',
-          ].join(' '),
+          scope: 'openid email profile https://www.googleapis.com/auth/business.manage',
         },
       },
     }),
   ],
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: true,
-        domain: '.nebulaseo.com',
-      },
-    },
-  },
   callbacks: {
-    async session({ session, user }) {
-      session.user.id = user.id
-      session.user.plan = user.plan
-      session.user.agencyName = user.agencyName
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id
+        token.plan = user.plan
+        token.agencyName = user.agencyName
+      }
+      return token
+    },
+    async session({ session, token }) {
+      if (token) {
+        session.user.id = token.id
+        session.user.plan = token.plan
+        session.user.agencyName = token.agencyName
+      }
       return session
     },
     async redirect({ url, baseUrl }) {
-      if (url.startsWith('/')) return `https://www.nebulaseo.com${url}`
-      if (url.includes('nebulaseo.com')) return url
       return 'https://www.nebulaseo.com/dashboard'
     },
   },
