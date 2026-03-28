@@ -1,5 +1,5 @@
 'use client'
-import { useState, Suspense } from 'react'
+import { useState, Suspense, useEffect } from 'react'
 import { signIn, useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -12,22 +12,33 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const router = useRouter()
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
 
-  if (session) {
-    router.push('/dashboard')
-    return null
-  }
+  useEffect(() => {
+    if (status === 'authenticated') {
+      window.location.href = '/dashboard'
+    }
+  }, [status])
 
   const handleGoogle = async () => {
     setLoading(true)
     setError(null)
-    try {
-      await signIn('google', { callbackUrl: '/dashboard' })
-    } catch (e) {
-      setError('Something went wrong. Please try again.')
-      setLoading(false)
-    }
+    const result = await signIn('google', { 
+      callbackUrl: '/dashboard',
+      redirect: true,
+    })
+  }
+
+  if (status === 'loading' || status === 'authenticated') {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ width: 40, height: 40, border: '3px solid rgba(123,47,255,0.3)', borderTopColor: 'var(--nebula-purple)', borderRadius: '50%', animation: 'spin 0.7s linear infinite', margin: '0 auto 16px' }} />
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--dim)', letterSpacing: 2 }}>LOADING...</div>
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    )
   }
 
   return (
@@ -48,7 +59,6 @@ function LoginForm() {
                 textTransform: 'uppercase', transition: 'all 0.3s',
                 background: (i === 1) === isSignup ? 'linear-gradient(135deg, var(--nebula-purple), var(--nebula-pink))' : 'transparent',
                 color: (i === 1) === isSignup ? '#fff' : 'var(--dim)',
-                boxShadow: (i === 1) === isSignup ? '0 0 20px rgba(123,47,255,0.3)' : 'none',
               }}>{tab}</button>
             ))}
           </div>
