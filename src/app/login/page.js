@@ -1,7 +1,7 @@
 'use client'
-import { useState, Suspense, useEffect } from 'react'
-import { signIn, useSession } from 'next-auth/react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { signIn } from 'next-auth/react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Starfield from '../../components/Starfield'
 
@@ -10,35 +10,10 @@ function LoginForm() {
   const defaultSignup = searchParams.get('signup') === 'true'
   const [isSignup, setIsSignup] = useState(defaultSignup)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const router = useRouter()
-  const { data: session, status } = useSession()
 
-  useEffect(() => {
-    if (status === 'authenticated') {
-      window.location.href = '/dashboard'
-    }
-  }, [status])
-
-  const handleGoogle = async () => {
+  const handleGoogle = () => {
     setLoading(true)
-    setError(null)
-    const result = await signIn('google', { 
-      callbackUrl: '/dashboard',
-      redirect: true,
-    })
-  }
-
-  if (status === 'loading' || status === 'authenticated') {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ width: 40, height: 40, border: '3px solid rgba(123,47,255,0.3)', borderTopColor: 'var(--nebula-purple)', borderRadius: '50%', animation: 'spin 0.7s linear infinite', margin: '0 auto 16px' }} />
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--dim)', letterSpacing: 2 }}>LOADING...</div>
-        </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    )
+    signIn('google', { callbackUrl: 'https://www.nebulaseo.com/dashboard' })
   }
 
   return (
@@ -66,12 +41,6 @@ function LoginForm() {
           <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--dim)', marginBottom: 28, lineHeight: 1.6 }}>
             {isSignup ? 'Create your account to get started.' : 'Welcome back. Sign in to your dashboard.'}
           </p>
-
-          {error && (
-            <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(255,45,154,0.1)', border: '1px solid rgba(255,45,154,0.3)', fontSize: 13, color: 'rgba(255,45,154,0.9)', marginBottom: 20, textAlign: 'center' }}>
-              {error}
-            </div>
-          )}
 
           <button onClick={handleGoogle} disabled={loading} style={{
             width: '100%', padding: '14px', borderRadius: 12,
