@@ -3,7 +3,6 @@ import GoogleProvider from 'next-auth/providers/google'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 
-// Custom adapter that strips unknown fields Google sends
 function CustomPrismaAdapter(prisma) {
   const adapter = PrismaAdapter(prisma)
   return {
@@ -34,12 +33,29 @@ export const authOptions = {
       },
     }),
   ],
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: true,
+        domain: '.nebulaseo.com',
+      },
+    },
+  },
   callbacks: {
     async session({ session, user }) {
       session.user.id = user.id
       session.user.plan = user.plan
       session.user.agencyName = user.agencyName
       return session
+    },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith('/')) return `https://www.nebulaseo.com${url}`
+      if (url.includes('nebulaseo.com')) return url
+      return 'https://www.nebulaseo.com/dashboard'
     },
   },
   pages: {
