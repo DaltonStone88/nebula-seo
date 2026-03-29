@@ -52,7 +52,11 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`/api/report?auditId=${auditId}`)
+    const secret = searchParams.get('secret') || ''
+    const url = secret 
+      ? `/api/report?auditId=${auditId}&secret=${encodeURIComponent(secret)}`
+      : `/api/report?auditId=${auditId}`
+    fetch(url)
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false) })
   }, [auditId])
