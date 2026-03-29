@@ -13,14 +13,31 @@ export async function GET(req) {
   }
 
   try {
-    // Get all active businesses
+    // Get businesses whose last post generation was 28+ days ago (or never)
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - 28)
+
     const businesses = await prisma.business.findMany({
       where: { status: 'ACTIVE' },
       select: { id: true, name: true, userId: true },
     })
 
+    // Filter to only businesses that need generation
+    const businessesNeedingGeneration = []
+    for (const biz of businesses) {
+      const lastPost = await prisma.automationPost.findFirst({
+        where: { businessId: biz.id },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      })
+      if (!lastPost || lastPost.createdAt < cutoff) {
+        businessesNeedingGeneration.push(biz)
+      }
+    }
+    const businesses_to_process = businessesNeedingGeneration
+
     const results = []
-    for (const business of businesses) {
+    for (const business of businesses_to_process) {
       try {
         const baseUrl = process.env.NEXTAUTH_URL || 'https://www.nebulaseo.com'
         const res = await fetch(`${baseUrl}/api/automation/generate`, {
@@ -40,7 +57,7 @@ export async function GET(req) {
     }
 
     console.log('Cron automation results:', results)
-    return NextResponse.json({ success: true, processed: results.length, results })
+    return NextResponse.json({ success: true, processed: results.length, skipped: businesses.length - businesses_to_process.length, results })
   } catch (e) {
     console.error('Cron error:', e)
     return NextResponse.json({ error: e.message }, { status: 500 })
