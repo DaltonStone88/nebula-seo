@@ -143,6 +143,17 @@ function ReportsContent() {
       await new Promise(resolve => iframe.onload = () => setTimeout(resolve, 4000))
 
       const iframeDoc = iframe.contentDocument
+      // Inject CSS to remove all margins/padding for full-bleed capture
+      const style = iframeDoc.createElement('style')
+      style.textContent = `
+        * { box-sizing: border-box !important; }
+        body { margin: 0 !important; padding: 0 !important; width: 794px !important; overflow: hidden !important; }
+        body > div { width: 794px !important; margin: 0 !important; }
+        body > div > div { width: 794px !important; }
+      `
+      iframeDoc.head.appendChild(style)
+      await new Promise(r => setTimeout(r, 500))
+
       const reportEl = iframeDoc.body.firstChild
       if (!reportEl) throw new Error('Report element not found')
 
@@ -168,20 +179,18 @@ function ReportsContent() {
           logging: false,
         })
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.92)
-        // Scale to fit A4 width, maintain aspect ratio
-        const imgW = pageW
+        const imgData = canvas.toDataURL('image/jpeg', 0.95)
+        // Always fill full A4 width
+        const imgW = pageW  // 210mm — full width, no margins
         const imgH = (canvas.height / canvas.width) * pageW
 
-        // If section is taller than page, scale to fit height instead
         if (imgH > pageH) {
-          const scaledW = (canvas.width / canvas.height) * pageH
-          const xOffset = (pageW - scaledW) / 2
-          doc.addImage(imgData, 'JPEG', xOffset, 0, scaledW, pageH)
+          // Scale down to fit page height if too tall
+          const scale = pageH / imgH
+          doc.addImage(imgData, 'JPEG', 0, 0, imgW * scale, pageH)
         } else {
-          // Center vertically on page
-          const yOffset = (pageH - imgH) / 2
-          doc.addImage(imgData, 'JPEG', 0, yOffset, imgW, imgH)
+          // Pin to top of page, fill full width
+          doc.addImage(imgData, 'JPEG', 0, 0, imgW, imgH)
         }
       }
 
