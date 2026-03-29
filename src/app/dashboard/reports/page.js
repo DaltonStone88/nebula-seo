@@ -505,8 +505,6 @@ function ReportsContent() {
                     const cols = latest ? parseInt((latest.gridSize || '7x7').split('x')[0]) : 7
                     const zoom = cols <= 5 ? 14 : cols <= 7 ? 13 : cols <= 10 ? 12 : 11
                     const mapW = 640, mapH = 480
-                    const circleSize = cols <= 7 ? 18 : cols <= 10 ? 14 : 11
-                    const circleFontSize = 7
                     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
                     const gridData = latest ? (Array.isArray(latest.gridData) ? latest.gridData : []) : []
 
@@ -534,71 +532,85 @@ function ReportsContent() {
 
                         {/* Two heatmaps: LEFT=baseline, RIGHT=latest or placeholder */}
                         {(() => {
+                          const mapCircleSize = cols <= 7 ? 28 : cols <= 10 ? 22 : 16
+                          const mapCircleFontSize = cols <= 7 ? 9 : cols <= 10 ? 8 : 7
+
                           const renderMap = (audit, label) => {
                             const aGridData = audit ? (Array.isArray(audit.gridData) ? audit.gridData : []) : []
                             return (
-                              <div style={{ position: 'relative', minHeight: 320 }}>
-                                {audit ? (
-                                  <>
-                                    <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${selectedBiz.lat},${selectedBiz.lng}&zoom=${zoom}&size=${mapW}x${mapH}&scale=2&style=feature:all|element:labels.text.fill|color:0x888888&style=feature:road|color:0x2a2a3a&style=feature:water|color:0x0a0a2f&style=feature:landscape|color:0x1a1a2e&style=feature:poi|visibility:off&key=${apiKey}`}
-                                      alt="map" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    <div style={{ position: 'absolute', inset: 0 }}>
-                                      {aGridData.map((cell, ci) => {
-                                        const sc = Math.pow(2, zoom), ws = 256 * sc
-                                        const x = (cell.lng - selectedBiz.lng) / 360 * ws
-                                        const lr = cell.lat * Math.PI / 180, cr = selectedBiz.lat * Math.PI / 180
-                                        const y = -(Math.log(Math.tan(Math.PI/4 + lr/2)) - Math.log(Math.tan(Math.PI/4 + cr/2))) / (2*Math.PI) * ws
-                                        const px = mapW/2 + x, py = mapH/2 + y
-                                        const px2 = (px/mapW)*100, py2 = (py/mapH)*100
-                                        if (px2 < 0 || px2 > 100 || py2 < 0 || py2 > 100) return null
-                                        const color = cell.rank === '20+' || cell.rank > 15 ? '#b01414' : cell.rank <= 3 ? '#1ec85a' : cell.rank <= 7 ? '#6bc94a' : cell.rank <= 10 ? '#c8c020' : '#e07820'
-                                        return <div key={ci} style={{ position: 'absolute', left: `${px2}%`, top: `${py2}%`, transform: 'translate(-50%,-50%)', width: circleSize, height: circleSize, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: circleFontSize, fontWeight: 800, background: color, color: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.5)', zIndex: 1 }}>{cell.rank}</div>
-                                      })}
-                                    </div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${selectedBiz.lat},${selectedBiz.lng}&zoom=${zoom}&size=${mapW}x${mapH}&scale=2&style=feature:all|element:labels.text.fill|color:0x888888&style=feature:road|color:0x2a2a3a&style=feature:water|color:0x0a0a2f&style=feature:landscape|color:0x1a1a2e&style=feature:poi|visibility:off&key=${apiKey}`}
-                                      alt="map" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(2px)', transform: 'scale(1.05)' }} />
-                                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(6,6,18,0.78)' }} />
-                                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
-                                      <div style={{ fontSize: 32 }}>🔄</div>
-                                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 900, color: '#fff' }}>Next Audit</div>
-                                      {nextDate && <>
-                                        <div style={{ textAlign: 'center' }}>
-                                          <div style={{ fontFamily: 'var(--font-display)', fontSize: 44, fontWeight: 900, color: 'var(--nebula-blue)', lineHeight: 1 }}>{daysLeft}</div>
-                                          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 3 }}>day{daysLeft !== 1 ? 's' : ''} remaining</div>
-                                        </div>
-                                        <div style={{ width: '75%', height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
-                                          <div style={{ height: '100%', borderRadius: 3, width: `${pct}%`, background: 'linear-gradient(90deg, var(--nebula-purple), var(--nebula-blue))' }} />
-                                        </div>
-                                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', textAlign: 'center' }}>{nextDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
-                                      </>}
-                                    </div>
-                                  </>
-                                )}
-                                {/* Audit label badge */}
-                                <div style={{ position: 'absolute', top: 10, left: 12, zIndex: 4, background: 'rgba(6,6,18,0.85)', borderRadius: 8, padding: '5px 10px', display: 'flex', gap: 12, alignItems: 'center' }}>
+                              <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', background: '#1a1a2e' }}>
+                                {/* Map header */}
+                                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'rgba(6,6,18,0.95)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                   <div>
-                                    <div style={{ fontSize: 9, color: 'var(--dim)', textTransform: 'uppercase', letterSpacing: 1 }}>{audit ? new Date(audit.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Upcoming'}</div>
-                                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--star-white)' }}>{label}</div>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--star-white)', fontFamily: 'var(--font-display)' }}>{label}</div>
+                                    <div style={{ fontSize: 10, color: 'var(--dim)', marginTop: 2 }}>{audit ? new Date(audit.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Upcoming'}</div>
                                   </div>
-                                  {audit && <>
-                                    <div style={{ textAlign: 'right' }}><div style={{ fontSize: 9, color: 'var(--dim)' }}>Avg</div><div style={{ fontSize: 14, fontWeight: 900, color: 'var(--nebula-blue)' }}>{audit.avgRank}</div></div>
-                                    <div style={{ textAlign: 'right' }}><div style={{ fontSize: 9, color: 'var(--dim)' }}>Top 3</div><div style={{ fontSize: 14, fontWeight: 900, color: 'var(--nebula-purple)' }}>{audit.top3Percent}%</div></div>
-                                  </>}
+                                  {audit && (
+                                    <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                                      <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: 9, color: 'var(--dim)' }}>Avg</div>
+                                        <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--nebula-blue)', fontFamily: 'var(--font-display)' }}>{audit.avgRank}</div>
+                                      </div>
+                                      <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: 9, color: 'var(--dim)' }}>Top 3</div>
+                                        <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--nebula-purple)', fontFamily: 'var(--font-display)' }}>{audit.top3Percent}%</div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Map body */}
+                                <div style={{ position: 'relative', paddingBottom: '75%' }}>
+                                  {audit ? (
+                                    <>
+                                      <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${selectedBiz.lat},${selectedBiz.lng}&zoom=${zoom}&size=${mapW}x${mapH}&scale=2&style=feature:all|element:labels.text.fill|color:0x888888&style=feature:road|color:0x2a2a3a&style=feature:water|color:0x0a0a2f&style=feature:landscape|color:0x1a1a2e&style=feature:poi|visibility:off&key=${apiKey}`}
+                                        alt="map" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                                      <div style={{ position: 'absolute', inset: 0 }}>
+                                        {aGridData.map((cell, ci) => {
+                                          const sc = Math.pow(2, zoom), ws = 256 * sc
+                                          const x = (cell.lng - selectedBiz.lng) / 360 * ws
+                                          const lr = cell.lat * Math.PI / 180, cr = selectedBiz.lat * Math.PI / 180
+                                          const y = -(Math.log(Math.tan(Math.PI/4 + lr/2)) - Math.log(Math.tan(Math.PI/4 + cr/2))) / (2*Math.PI) * ws
+                                          const px = mapW/2 + x, py = mapH/2 + y
+                                          const px2 = (px/mapW)*100, py2 = (py/mapH)*100
+                                          if (px2 < 0 || px2 > 100 || py2 < 0 || py2 > 100) return null
+                                          const color = cell.rank === '20+' || cell.rank > 15 ? '#b01414' : cell.rank <= 3 ? '#1ec85a' : cell.rank <= 7 ? '#6bc94a' : cell.rank <= 10 ? '#c8c020' : '#e07820'
+                                          return <div key={ci} style={{ position: 'absolute', left: `${px2}%`, top: `${py2}%`, transform: 'translate(-50%,-50%)', width: mapCircleSize, height: mapCircleSize, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: mapCircleFontSize, fontWeight: 800, background: color, color: '#fff', boxShadow: '0 2px 6px rgba(0,0,0,0.5)', zIndex: 1 }}>{cell.rank}</div>
+                                        })}
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${selectedBiz.lat},${selectedBiz.lng}&zoom=${zoom}&size=${mapW}x${mapH}&scale=2&style=feature:all|element:labels.text.fill|color:0x888888&style=feature:road|color:0x2a2a3a&style=feature:water|color:0x0a0a2f&style=feature:landscape|color:0x1a1a2e&style=feature:poi|visibility:off&key=${apiKey}`}
+                                        alt="map" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(2px)', transform: 'scale(1.05)' }} />
+                                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(6,6,18,0.78)' }} />
+                                      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
+                                        <div style={{ fontSize: 32 }}>🔄</div>
+                                        <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 900, color: '#fff' }}>Next Audit</div>
+                                        {nextDate && <>
+                                          <div style={{ textAlign: 'center' }}>
+                                            <div style={{ fontFamily: 'var(--font-display)', fontSize: 44, fontWeight: 900, color: 'var(--nebula-blue)', lineHeight: 1 }}>{daysLeft}</div>
+                                            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 3 }}>day{daysLeft !== 1 ? 's' : ''} remaining</div>
+                                          </div>
+                                          <div style={{ width: '75%', height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                                            <div style={{ height: '100%', borderRadius: 3, width: `${pct}%`, background: 'linear-gradient(90deg, var(--nebula-purple), var(--nebula-blue))' }} />
+                                          </div>
+                                          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', textAlign: 'center' }}>{nextDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+                                        </>}
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             )
                           }
-                          // Show latest on right if there are 2+ audits total, even if same keyword
+
                           const hasMultiple = kwAudits.length >= 2
                           const rightAudit = hasMultiple ? latest : null
                           const rightLabel = hasMultiple ? 'Latest Audit' : 'Next Audit'
                           return (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, margin: '0' }}>
-                              <div style={{ borderRight: '1px solid var(--border)' }}>{renderMap(baseline || latest, 'Baseline Audit')}</div>
-                              <div>{renderMap(rightAudit, rightLabel)}</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, padding: '20px' }}>
+                              {renderMap(baseline || latest, 'Baseline Audit')}
+                              {renderMap(rightAudit, rightLabel)}
                             </div>
                           )
                         })()}
