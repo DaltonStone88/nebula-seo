@@ -135,7 +135,7 @@ function ReportsContent() {
 
       // Load report in hidden iframe
       const iframe = document.createElement('iframe')
-      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:960px;height:2000px;border:none;overflow:hidden;'
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:794px;height:2000px;border:none;overflow:hidden;background:white;'
       iframe.src = `/report/${auditId}`
       document.body.appendChild(iframe)
 
