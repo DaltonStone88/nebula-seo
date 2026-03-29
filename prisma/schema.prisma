@@ -120,6 +120,11 @@ model Business {
   posts       GBPPost[]
   rankAudits  RankAudit[]
   automations Automation[]
+  automationPosts AutomationPost[]
+  offers      BusinessOffer[]
+  events      BusinessEvent[]
+  updates     BusinessUpdate[]
+  images      BusinessImage[]
 }
 
 model Review {
@@ -180,6 +185,103 @@ model Automation {
   business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 }
 
+// ─── Automation Content Models ───────────────────────────────────────────────
+
+model AutomationPost {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Post content
+  content       String   @db.Text
+  postType      String   // WHATS_NEW, OFFER, EVENT
+  keyword       String?
+  city          String?
+  imageUrl      String?
+  imageIndex    Int?     // which image slot was used
+
+  // Scheduling
+  scheduledFor  DateTime?
+  publishedAt   DateTime?
+  googlePostId  String?
+
+  // Approval
+  status        AutomationPostStatus @default(PENDING)
+  approvedAt    DateTime?
+
+  // For offers
+  offerTitle    String?
+  offerCode     String?
+  offerUrl      String?
+  offerTerms    String?
+  offerStart    DateTime?
+  offerEnd      DateTime?
+
+  // For events
+  eventTitle    String?
+  eventStart    DateTime?
+  eventEnd      DateTime?
+
+  businessId    String
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model BusinessOffer {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  title       String
+  description String?  @db.Text
+  couponCode  String?
+  redeemUrl   String?
+  terms       String?  @db.Text
+  startDate   DateTime?
+  endDate     DateTime?
+  active      Boolean  @default(true)
+
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model BusinessEvent {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  title       String
+  description String?  @db.Text
+  startDate   DateTime?
+  endDate     DateTime?
+  active      Boolean  @default(true)
+
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model BusinessUpdate {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  title       String?
+  content     String   @db.Text
+  active      Boolean  @default(true)
+
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model BusinessImage {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  url         String
+  filename    String?
+  size        Int?
+  sortOrder   Int      @default(0)
+
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
 enum Plan {
@@ -214,4 +316,12 @@ enum AutomationStatus {
   SUCCESS
   FAILED
   PENDING
+}
+
+enum AutomationPostStatus {
+  PENDING
+  APPROVED
+  PUBLISHED
+  FAILED
+  REJECTED
 }
