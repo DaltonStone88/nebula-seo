@@ -395,15 +395,8 @@ function ReportsContent() {
   return (
     <div>
       <div style={{ padding: '20px 36px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(6,6,18,0.5)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>Reports</h1>
-
-        </div>
-        {businesses.length > 0 && (
-          <select onChange={e => setSelectedBiz(businesses.find(b => b.id === e.target.value))} style={{ ...selectStyle, width: 'auto' }}>
-            {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-        )}
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>Reports</h1>
+        {selectedBiz && <div style={{ fontSize: 13, color: 'var(--dim)' }}>{selectedBiz.name}</div>}
       </div>
 
       <div style={{ padding: '32px 36px' }}>
@@ -616,11 +609,33 @@ function ReportsContent() {
 
                           const hasMultiple = kwAudits.length >= 2
                           const rightAudit = hasMultiple ? (fullLatest || latest) : null
-                          const rightLabel = hasMultiple ? 'Latest Audit' : 'Next Audit'
+
+                          // Right side: if only 1 audit, show a clean "next audit" card instead of blurred map
+                          const renderNextAuditCard = () => (
+                            <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', background: 'rgba(232,238,255,0.02)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12, textAlign: 'center' }}>
+                              <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(123,47,255,0.1)', border: '1px solid rgba(123,47,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📅</div>
+                              <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700 }}>Next Audit</div>
+                              {nextDate && (
+                                <>
+                                  <div style={{ fontSize: 13, color: 'var(--dim)', lineHeight: 1.6 }}>
+                                    Your next ranking audit is scheduled for
+                                  </div>
+                                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--nebula-blue)' }}>
+                                    {nextDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                                  </div>
+                                  <div style={{ width: '80%', height: 5, borderRadius: 3, background: 'rgba(232,238,255,0.08)', overflow: 'hidden', marginTop: 4 }}>
+                                    <div style={{ height: '100%', borderRadius: 3, width: `${pct}%`, background: 'linear-gradient(90deg, var(--nebula-purple), var(--nebula-blue))' }} />
+                                  </div>
+                                  <div style={{ fontSize: 12, color: 'var(--dim)' }}>{daysLeft} day{daysLeft !== 1 ? 's' : ''} away</div>
+                                </>
+                              )}
+                            </div>
+                          )
+
                           return (
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, padding: '20px' }}>
                               {renderMap(fullBaseline || fullLatest || baseline || latest, 'Baseline Audit')}
-                              {renderMap(rightAudit, rightLabel)}
+                              {hasMultiple ? renderMap(rightAudit, 'Latest Audit') : renderNextAuditCard()}
                             </div>
                           )
                         })()}
