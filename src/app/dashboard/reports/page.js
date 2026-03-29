@@ -340,6 +340,16 @@ function ReportsContent() {
 
   useEffect(() => { fetchBusinesses() }, [])
 
+  // Auto-refresh data after being redirected from an audit run
+  useEffect(() => {
+    if (searchParams.get('audited') !== '1') return
+    // Poll every 5 seconds until we have audit data, then stop
+    const interval = setInterval(() => { fetchBusinesses() }, 5000)
+    // Stop polling after 3 minutes max
+    const timeout = setTimeout(() => clearInterval(interval), 180000)
+    return () => { clearInterval(interval); clearTimeout(timeout) }
+  }, [])
+
   const keyword = selectedBiz?.targetKeywords?.[selectedKeyword]
   const [fullAuditsByKeyword, setFullAuditsByKeyword] = useState({})
 
