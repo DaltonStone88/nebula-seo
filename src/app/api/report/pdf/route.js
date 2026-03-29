@@ -4,6 +4,11 @@ import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
 export const maxDuration = 60
+export const dynamic = 'force-dynamic'
+
+// chromium-min requires a remote URL for the binary
+// This is the v143 pack matching our installed version
+const CHROMIUM_REMOTE_URL = 'https://github.com/Sparticuz/chromium/releases/download/v143.0.0/chromium-v143.0.0-pack.x64.tar'
 
 export async function GET(req) {
   const session = await getServerSession(authOptions)
@@ -19,18 +24,22 @@ export async function GET(req) {
   if (!audit) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   try {
-    const chromium = (await import('@sparticuz/chromium')).default
+    const chromium = (await import('@sparticuz/chromium-min')).default
     const puppeteer = (await import('puppeteer-core')).default
+
+    chromium.setHeadlessMode = true
+    chromium.setGraphicsMode = false
 
     const browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: { width: 1200, height: 900 },
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      executablePath: await chromium.executablePath(CHROMIUM_REMOTE_URL),
+      headless: true,
     })
 
     const page = await browser.newPage()
 
+    // Pass auth cookies so report page loads authenticated
     const cookieHeader = req.headers.get('cookie') || ''
     if (cookieHeader) {
       const baseUrl = process.env.NEXTAUTH_URL || 'https://www.nebulaseo.com'
@@ -67,7 +76,6 @@ export async function GET(req) {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="seo-report-${date}.pdf"`,
-        'Content-Length': pdf.length.toString(),
       },
     })
   } catch (err) {
