@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 
 function EditModal({ biz, onClose, onSaved }) {
   const router = useRouter()
@@ -301,13 +302,221 @@ function EditModal({ biz, onClose, onSaved }) {
   )
 }
 
+function CancelModal({ biz, onClose, onCancelled }) {
+  const [step, setStep] = useState('reason') // reason | retention | offer | confirm
+  const [reason, setReason] = useState('')
+  const [stats, setStats] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [actionTaken, setActionTaken] = useState(null)
+
+  useEffect(() => {
+    fetch(`/api/stripe/cancel?businessId=${biz.id}`)
+      .then(r => r.json())
+      .then(setStats)
+      .catch(() => {})
+  }, [biz.id])
+
+  const reasons = [
+    'Too expensive', 'Not seeing results', 'Switching to another tool',
+    'Business closed or paused', 'Missing a feature I need', 'Other',
+  ]
+
+  const handleAction = async (action) => {
+    setLoading(true)
+    const res = await fetch('/api/stripe/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ businessId: biz.id, action }),
+    })
+    const data = await res.json()
+    setLoading(false)
+    if (data.success) {
+      setActionTaken(action)
+      if (action === 'discount') setStep('offer_accepted')
+      if (action === 'pause') setStep('paused')
+      if (action === 'cancel') { setStep('cancelled'); onCancelled() }
+    }
+  }
+
+  const accessDate = stats?.currentPeriodEnd
+    ? new Date(stats.currentPeriodEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : 'end of billing period'
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ background: 'rgba(10,10,28,0.99)', border: '1px solid var(--border)', borderRadius: 20, padding: '36px', width: '100%', maxWidth: 520 }}>
+
+        {/* Step 1 — Reason */}
+        {step === 'reason' && (
+          <>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Cancel {biz.name}?</div>
+            <p style={{ fontSize: 13, color: 'var(--dim)', marginBottom: 24, lineHeight: 1.6 }}>Before you go, help us understand why. This takes 10 seconds.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
+              {reasons.map(r => (
+                <button key={r} onClick={() => setReason(r)} style={{ padding: '12px 16px', borderRadius: 10, border: `1px solid ${reason === r ? 'rgba(123,47,255,0.5)' : 'var(--border)'}`, background: reason === r ? 'rgba(123,47,255,0.1)' : 'transparent', color: reason === r ? 'var(--star-white)' : 'var(--dim)', cursor: 'pointer', textAlign: 'left', fontSize: 13, fontFamily: 'var(--font-body)' }}>{r}</button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={onClose} style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--dim)', cursor: 'pointer', fontSize: 13 }}>Keep Subscription</button>
+              <button onClick={() => reason && setStep('retention')} disabled={!reason} className="btn-primary" style={{ flex: 1, fontSize: 13, padding: '11px', justifyContent: 'center', opacity: reason ? 1 : 0.4 }}>Continue →</button>
+            </div>
+          </>
+        )}
+
+        {/* Step 2 — Retention (show stats) */}
+        {step === 'retention' && stats && (
+          <>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Here's what you'd be losing</div>
+            <p style={{ fontSize: 13, color: 'var(--dim)', marginBottom: 24, lineHeight: 1.6 }}>NebulaSEO has been working hard for {biz.name}.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
+              {[
+                { label: 'Posts Generated', val: stats.postsGenerated, icon: '📝' },
+                { label: 'Rank Audits Run', val: stats.auditsRun, icon: '📊' },
+                { label: 'Current Avg Rank', val: stats.avgRank ? `#${stats.avgRank}` : '—', icon: '📍' },
+                { label: 'Days Active', val: stats.daysActive, icon: '📅' },
+              ].map((s, i) => (
+                <div key={i} style={{ padding: '16px', borderRadius: 12, background: 'rgba(123,47,255,0.08)', border: '1px solid rgba(123,47,255,0.2)', textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, marginBottom: 6 }}>{s.icon}</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--nebula-blue)' }}>{s.val}</div>
+                  <div style={{ fontSize: 11, color: 'var(--dim)', marginTop: 3 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--dim)', marginBottom: 20, lineHeight: 1.6 }}>Cancelling will delete all ranking history, generated posts, and content for this location permanently.</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={onClose} style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1px solid rgba(20,200,100,0.4)', background: 'rgba(20,200,100,0.08)', color: 'rgba(20,200,100,0.9)', cursor: 'pointer', fontSize: 13 }}>Keep Subscription</button>
+              <button onClick={() => setStep('offer')} style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--dim)', cursor: 'pointer', fontSize: 13 }}>Still want to cancel →</button>
+            </div>
+          </>
+        )}
+
+        {/* Step 3 — Offer */}
+        {step === 'offer' && (
+          <>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Wait — we have an offer</div>
+            <p style={{ fontSize: 13, color: 'var(--dim)', marginBottom: 24, lineHeight: 1.6 }}>Before you cancel, we'd like to help.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+              {!stats?.discountUsed && (
+                <div style={{ padding: '20px', borderRadius: 14, background: 'rgba(0,200,255,0.08)', border: '1px solid rgba(0,200,255,0.3)' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>💰 10% Off Next Month</div>
+                  <div style={{ fontSize: 13, color: 'var(--dim)', marginBottom: 12, lineHeight: 1.6 }}>Get 10% off your next billing cycle — no strings attached. One time offer.</div>
+                  <button onClick={() => handleAction('discount')} disabled={loading} className="btn-primary" style={{ fontSize: 12, padding: '9px 20px' }}>{loading ? 'Applying...' : 'Claim 10% Off'}</button>
+                </div>
+              )}
+              {!stats?.pauseUsed && (
+                <div style={{ padding: '20px', borderRadius: 14, background: 'rgba(123,47,255,0.08)', border: '1px solid rgba(123,47,255,0.3)' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>⏸️ Pause for 30 Days</div>
+                  <div style={{ fontSize: 13, color: 'var(--dim)', marginBottom: 12, lineHeight: 1.6 }}>Keep your data and rankings intact. Your subscription resumes automatically after 30 days. One time offer.</div>
+                  <button onClick={() => handleAction('pause')} disabled={loading} style={{ padding: '9px 20px', borderRadius: 10, border: '1px solid rgba(123,47,255,0.4)', background: 'rgba(123,47,255,0.1)', color: 'var(--star-white)', cursor: 'pointer', fontSize: 12 }}>{loading ? 'Pausing...' : 'Pause Subscription'}</button>
+                </div>
+              )}
+            </div>
+            <button onClick={() => setStep('confirm')} style={{ width: '100%', padding: '11px', borderRadius: 10, border: '1px solid rgba(255,50,50,0.3)', background: 'rgba(255,50,50,0.05)', color: 'rgba(255,100,100,0.8)', cursor: 'pointer', fontSize: 13 }}>No thanks, cancel anyway</button>
+          </>
+        )}
+
+        {/* Step 4 — Final confirm */}
+        {step === 'confirm' && (
+          <>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Final confirmation</div>
+            <p style={{ fontSize: 13, color: 'var(--dim)', marginBottom: 16, lineHeight: 1.6 }}>
+              Your subscription will remain active until <strong style={{ color: 'var(--star-white)' }}>{accessDate}</strong>, then your account and all data for <strong style={{ color: 'var(--star-white)' }}>{biz.name}</strong> will be permanently deleted.
+            </p>
+            <div style={{ padding: '14px 16px', borderRadius: 10, background: 'rgba(255,50,50,0.07)', border: '1px solid rgba(255,50,50,0.25)', fontSize: 13, color: 'rgba(255,120,120,0.9)', marginBottom: 24, lineHeight: 1.6 }}>
+              ⚠️ This cannot be undone. All ranking history, posts, and data will be deleted permanently.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={onClose} style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--dim)', cursor: 'pointer', fontSize: 13 }}>Keep Subscription</button>
+              <button onClick={() => handleAction('cancel')} disabled={loading} style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1px solid rgba(255,50,50,0.4)', background: 'rgba(255,50,50,0.1)', color: 'rgba(255,100,100,0.9)', cursor: 'pointer', fontSize: 13 }}>{loading ? 'Cancelling...' : 'Yes, Cancel Subscription'}</button>
+            </div>
+          </>
+        )}
+
+        {/* Offer accepted */}
+        {step === 'offer_accepted' && (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 8 }}>10% off applied!</div>
+            <p style={{ fontSize: 13, color: 'var(--dim)', marginBottom: 24 }}>Your discount has been applied to your next invoice. Thanks for staying!</p>
+            <button onClick={onClose} className="btn-primary" style={{ fontSize: 13, padding: '11px 28px' }}>Back to Dashboard</button>
+          </div>
+        )}
+
+        {/* Paused */}
+        {step === 'paused' && (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>⏸️</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Subscription paused</div>
+            <p style={{ fontSize: 13, color: 'var(--dim)', marginBottom: 24 }}>You have full access until {accessDate}. We'll see you when you're ready.</p>
+            <button onClick={onClose} className="btn-primary" style={{ fontSize: 13, padding: '11px 28px' }}>Got it</button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Businesses() {
   const [businesses, setBusinesses] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState(null)
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false)
+  const [auditProgress, setAuditProgress] = useState(null)
+  const [cancelling, setCancelling] = useState(null)
 
   useEffect(() => {
+    // Check if returning from successful Stripe checkout
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('checkout') === 'success') {
+      setCheckoutSuccess(true)
+      // Poll for the business to be created by webhook, then run audits
+      let attempts = 0
+      const poll = setInterval(async () => {
+        attempts++
+        try {
+          const res = await fetch('/api/businesses')
+          const data = await res.json()
+          const list = Array.isArray(data) ? data : []
+          setBusinesses(list)
+          // Find the newest business (just created by webhook)
+          const newest = list[0]
+          if (newest && attempts > 1) {
+            clearInterval(poll)
+            setCheckoutSuccess(false)
+            // Run audits for all keywords
+            const kws = newest.targetKeywords || []
+            if (kws.length > 0) {
+              setAuditProgress(kws.map(kw => ({ keyword: kw, done: false, error: false })))
+              for (let i = 0; i < kws.length; i++) {
+                try {
+                  await fetch('/api/places/rank-audit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ businessId: newest.id, keyword: kws[i], gridSize: newest.gridSize || '7x7', spacing: newest.gridSpacing || 'medium' }),
+                  })
+                  setAuditProgress(prev => prev.map((p, j) => j === i ? { ...p, done: true } : p))
+                } catch (e) {
+                  setAuditProgress(prev => prev.map((p, j) => j === i ? { ...p, done: true, error: true } : p))
+                }
+              }
+              fetch('/api/automation/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ businessId: newest.id }),
+              }).catch(() => {})
+            }
+            // Clean URL
+            window.history.replaceState({}, '', '/dashboard/businesses')
+            setTimeout(() => setAuditProgress(null), 3000)
+          }
+        } catch (e) { console.error(e) }
+        if (attempts > 20) clearInterval(poll) // stop after 40s
+      }, 2000)
+      setLoading(false)
+      return () => clearInterval(poll)
+    }
+
     fetch('/api/businesses')
       .then(r => r.json())
       .then(data => { setBusinesses(Array.isArray(data) ? data : []) })
@@ -319,6 +528,56 @@ export default function Businesses() {
 
   return (
     <div>
+      {/* Checkout success overlay */}
+      {(checkoutSuccess || auditProgress) && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center', maxWidth: 460, width: '100%', padding: '0 24px' }}>
+            {checkoutSuccess && !auditProgress && (
+              <>
+                <div style={{ width: 36, height: 36, border: '3px solid rgba(123,47,255,0.3)', borderTopColor: 'var(--nebula-purple)', borderRadius: '50%', animation: 'spin 0.7s linear infinite', margin: '0 auto 24px' }} />
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Payment confirmed! 🎉</div>
+                <p style={{ fontSize: 14, color: 'var(--dim)' }}>Setting up your business profile...</p>
+              </>
+            )}
+            {auditProgress && (
+              <>
+                <div style={{ fontSize: 48, marginBottom: 24 }}>🔍</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
+                  {auditProgress.every(p => p.done) ? 'All done!' : 'Running First Audits'}
+                </div>
+                <p style={{ fontSize: 14, color: 'var(--dim)', marginBottom: 32 }}>Scanning your ranking grid. Hang tight.</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {auditProgress.map((p, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderRadius: 12, background: 'rgba(232,238,255,0.03)', border: `1px solid ${p.done ? (p.error ? 'rgba(255,80,80,0.3)' : 'rgba(20,200,100,0.3)') : 'rgba(123,47,255,0.3)'}` }}>
+                      <div style={{ width: 24, height: 24, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {p.done ? <span style={{ fontSize: 16 }}>{p.error ? '❌' : '✅'}</span> : <div style={{ width: 18, height: 18, border: '2px solid rgba(123,47,255,0.3)', borderTopColor: 'var(--nebula-purple)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />}
+                      </div>
+                      <div style={{ flex: 1, textAlign: 'left' }}>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{p.keyword}</div>
+                        <div style={{ fontSize: 11, color: 'var(--dim)', marginTop: 2 }}>{p.done ? (p.error ? 'Failed' : 'Complete') : 'Scanning...'}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          </div>
+        </div>
+      )}
+
+      {cancelling && (
+        <CancelModal
+          biz={cancelling}
+          onClose={() => setCancelling(null)}
+          onCancelled={() => {
+            setCancelling(null)
+            // Refresh businesses list
+            fetch('/api/businesses').then(r => r.json()).then(data => setBusinesses(Array.isArray(data) ? data : []))
+          }}
+        />
+      )}
+
       {editing && (
         <EditModal
           biz={editing}
@@ -390,6 +649,17 @@ export default function Businesses() {
                     )}
                   </div>
 
+                  {/* Billing status */}
+                  {biz.cancelAtPeriodEnd && (
+                    <div style={{ marginBottom: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(255,184,48,0.08)', border: '1px solid rgba(255,184,48,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 11, color: 'rgba(255,184,48,0.9)' }}>⚠️ Cancels {biz.stripeCurrentPeriodEnd ? new Date(biz.stripeCurrentPeriodEnd).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : 'soon'}</span>
+                      <button onClick={async () => {
+                        const res = await fetch('/api/stripe/reactivate', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ businessId: biz.id }) })
+                        if ((await res.json()).success) setBusinesses(bs => bs.map(b => b.id === biz.id ? { ...b, cancelAtPeriodEnd: false } : b))
+                      }} style={{ fontSize: 11, color: 'var(--nebula-blue)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Reactivate</button>
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => setEditing(biz)}
                       style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, color: 'var(--dim)', background: 'rgba(232,238,255,0.03)', cursor: 'pointer', transition: 'all 0.2s' }}
@@ -399,6 +669,12 @@ export default function Businesses() {
                     <Link href="/dashboard/reports" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, color: 'var(--nebula-blue)', background: 'rgba(0,200,255,0.05)', fontWeight: 500, transition: 'all 0.2s' }}>
                       Reports →
                     </Link>
+                    <button onClick={() => setCancelling(biz)}
+                      style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(255,50,50,0.2)', fontSize: 13, color: 'rgba(255,100,100,0.6)', background: 'transparent', cursor: 'pointer', transition: 'all 0.2s' }}
+                      title="Cancel subscription"
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,50,50,0.4)'; e.currentTarget.style.color = 'rgba(255,100,100,0.9)' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,50,50,0.2)'; e.currentTarget.style.color = 'rgba(255,100,100,0.6)' }}
+                    >✕</button>
                   </div>
                 </div>
               )
