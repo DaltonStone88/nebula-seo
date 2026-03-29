@@ -589,7 +589,7 @@ export default function Businesses() {
         />
       )}
 
-      <div style={{ padding: '20px 36px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(6,6,18,0.5)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50 }}>
+      <div style={{ padding: '20px 36px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, background: 'rgba(6,6,18,0.5)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50 }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>Businesses</h1>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <div style={{ position: 'relative' }}>
@@ -601,7 +601,7 @@ export default function Businesses() {
         </div>
       </div>
 
-      <div style={{ padding: '32px 36px' }}>
+      <div style={{ padding: '32px 36px', overflowX: 'hidden' }}>
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
             <div style={{ width: 36, height: 36, border: '3px solid rgba(123,47,255,0.3)', borderTopColor: 'var(--nebula-purple)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
@@ -660,9 +660,9 @@ export default function Businesses() {
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button onClick={() => setEditing(biz)}
-                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, color: 'var(--dim)', background: 'rgba(232,238,255,0.03)', cursor: 'pointer', transition: 'all 0.2s' }}
+                      style={{ flex: 1, minWidth: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, color: 'var(--dim)', background: 'rgba(232,238,255,0.03)', cursor: 'pointer', transition: 'all 0.2s' }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(123,47,255,0.3)'; e.currentTarget.style.color = 'var(--star-white)' }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--dim)' }}
                     >✏️ Edit</button>
