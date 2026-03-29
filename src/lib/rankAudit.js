@@ -14,7 +14,9 @@ const SPACING = {
 
 export function generateGrid(centerLat, centerLng, gridSize = '7x7', spacing = 'medium') {
   const { cols, rows } = GRID_SIZES[gridSize] || GRID_SIZES['7x7']
-  const step = SPACING[spacing] || SPACING.medium
+  const latStep = SPACING[spacing] || SPACING.medium
+  // Correct lng step for latitude — 1 deg lng is shorter than 1 deg lat
+  const lngStep = latStep / Math.cos(centerLat * Math.PI / 180)
   const points = []
   const halfCols = Math.floor(cols / 2)
   const halfRows = Math.floor(rows / 2)
@@ -22,8 +24,8 @@ export function generateGrid(centerLat, centerLng, gridSize = '7x7', spacing = '
   for (let row = -halfRows; row <= halfRows; row++) {
     for (let col = -halfCols; col <= halfCols; col++) {
       points.push({
-        lat: centerLat + (row * step),
-        lng: centerLng + (col * step),
+        lat: centerLat + (row * latStep),
+        lng: centerLng + (col * lngStep),
         row: row + halfRows,
         col: col + halfCols,
       })
@@ -37,15 +39,10 @@ export async function checkRankAtPoint(lat, lng, keyword, placeId, apiKey) {
   try {
     const radius = 3000
     const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&keyword=${encodeURIComponent(keyword)}&key=${apiKey}`
-
     const res = await fetch(url)
     const data = await res.json()
-
     if (!data.results || data.results.length === 0) return '20+'
-
-    // Match by Place ID — exact and reliable
     const rank = data.results.findIndex(place => place.place_id === placeId)
-
     if (rank === -1) return '20+'
     return rank + 1
   } catch (e) {
@@ -58,7 +55,6 @@ export function calculateStats(gridData) {
   const avgRank = ranks.reduce((a, b) => a + b, 0) / ranks.length
   const top3Count = ranks.filter(r => r <= 3).length
   const top3Percent = (top3Count / ranks.length) * 100
-
   return {
     avgRank: Math.round(avgRank * 100) / 100,
     top3Percent: Math.round(top3Percent * 100) / 100,
