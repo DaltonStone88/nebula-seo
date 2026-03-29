@@ -125,6 +125,21 @@ function ReportsContent() {
   const [loading, setLoading] = useState(true)
   const [baselineFull, setBaselineFull] = useState(null)
   const [latestFull, setLatestFull] = useState(null)
+  const [downloading, setDownloading] = useState(false)
+
+  const downloadReport = async (auditId, whitelabel = false) => {
+    setDownloading(true)
+    try {
+      const url = `/api/report/pdf?auditId=${auditId}${whitelabel ? '&wl=1' : ''}`
+      const res = await fetch(url)
+      const blob = await res.blob()
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `seo-report-${new Date().toISOString().split('T')[0]}.pdf`
+      a.click()
+    } catch (e) { console.error(e) }
+    setDownloading(false)
+  }
 
   const fetchBusinesses = async () => {
     const res = await fetch('/api/businesses')
@@ -244,11 +259,20 @@ function ReportsContent() {
                       <option value="large">Regional (~1 mi)</option>
                     </select>
                   </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={runAudit} disabled={running || !selectedBiz.targetKeywords?.length} className="btn-primary" style={{ fontSize: 12, padding: '11px 24px', justifyContent: 'center', whiteSpace: 'nowrap' }}>
                     {running
                       ? <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />Running...</span>
                       : '🔍 Run Audit'}
                   </button>
+                  {latestFull && (
+                    <button onClick={() => downloadReport(latestFull.id)} disabled={downloading} style={{ padding: '11px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'rgba(232,238,255,0.04)', color: 'var(--dim)', cursor: 'pointer', fontSize: 13, transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+                      title="Download PDF Report"
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(123,47,255,0.4)'; e.currentTarget.style.color = 'var(--star-white)' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--dim)' }}
+                    >{downloading ? '...' : '⬇ PDF'}</button>
+                  )}
+                  </div>
                 </div>
               </div>
 
