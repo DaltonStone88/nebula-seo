@@ -125,7 +125,6 @@ function ReportsContent() {
   const [loading, setLoading] = useState(true)
   const [baselineFull, setBaselineFull] = useState(null)
   const [latestFull, setLatestFull] = useState(null)
-  const [downloading, setDownloading] = useState(null)
 
   const downloadReport = async (auditId) => {
     setDownloading(auditId)
@@ -328,11 +327,11 @@ function ReportsContent() {
                       : '🔍 Run Audit'}
                   </button>
                   {latestFull && (
-                    <button onClick={() => downloadReport(latestFull.id)} disabled={!!downloading} style={{ padding: '11px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'rgba(232,238,255,0.04)', color: 'var(--dim)', cursor: 'pointer', fontSize: 13, transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+                    <button onClick={() => downloadReport(latestFull.id)}  style={{ padding: '11px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'rgba(232,238,255,0.04)', color: 'var(--dim)', cursor: 'pointer', fontSize: 13, transition: 'all 0.2s', whiteSpace: 'nowrap' }}
                       title="Download PDF Report"
                       onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(123,47,255,0.4)'; e.currentTarget.style.color = 'var(--star-white)' }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--dim)' }}
-                    >{downloading === latestFull?.id ? '...' : '⬇ PDF'}</button>
+                    >⬇ PDF</button>
                   )}
                   </div>
                 </div>
