@@ -41,7 +41,7 @@ export default function Navbar() {
         <ul style={{ display: 'flex', gap: 36, listStyle: 'none', alignItems: 'center' }}>
           {[
             { label: 'Features', href: '/#features' },
-            { label: 'How It Works', href: '/how-it-works' },
+            { label: 'How It Works', href: '/#how-it-works' },
             { label: 'Pricing', href: '/pricing' },
           ].map(link => (
             <li key={link.href}>
@@ -67,7 +67,7 @@ export default function Navbar() {
             onMouseLeave={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.color = 'var(--dim)' }}
           >Log In</Link>
           <Link href="/login?signup=true" className="btn-primary" style={{ padding: '10px 24px', fontSize: 12 }}>
-            Get Started
+            Start $1 Trial
           </Link>
         </div>
       </nav>
