@@ -33,58 +33,31 @@ export default function AddBusiness() {
     const filteredCities = cities.filter(c => c.trim())
 
     try {
-      // 1. Create the business
-      const res = await fetch('/api/businesses', {
+      // Send business data to Stripe checkout — business is created after payment confirms via webhook
+      const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: selected.name,
-          address: selected.address,
-          placeId: selected.placeId,
-          lat: selected.lat,
-          lng: selected.lng,
-          category: selected.category,
-          targetKeywords: filteredKeywords,
-          targetCities: filteredCities,
+          businessData: {
+            name: selected.name,
+            address: selected.address,
+            placeId: selected.placeId,
+            lat: selected.lat,
+            lng: selected.lng,
+            category: selected.category,
+            targetKeywords: filteredKeywords,
+            targetCities: filteredCities,
+          },
         }),
       })
-      const biz = await res.json()
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
 
-      // 2. Show audit running step
-      setStep(3)
-      setAuditProgress(filteredKeywords.map(kw => ({ keyword: kw, done: false, error: false })))
-
-      // 3. Run audits for each keyword sequentially
-      for (let i = 0; i < filteredKeywords.length; i++) {
-        const kw = filteredKeywords[i]
-        try {
-          await fetch('/api/places/rank-audit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              businessId: biz.id,
-              keyword: kw,
-              gridSize: biz.gridSize || '7x7',
-              spacing: biz.gridSpacing || 'medium',
-            }),
-          })
-          setAuditProgress(prev => prev.map((p, j) => j === i ? { ...p, done: true } : p))
-        } catch (e) {
-          setAuditProgress(prev => prev.map((p, j) => j === i ? { ...p, done: true, error: true } : p))
-        }
-      }
-
-      // 4. Kick off post generation in the background (don't await — let it run async)
-      fetch('/api/automation/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ businessId: biz.id }),
-      }).catch(e => console.error('Post generation failed:', e))
-
-      // 5. Redirect to reports
-      router.push('/dashboard/reports')
+      // Redirect to Stripe Checkout
+      window.location.href = data.url
     } catch (e) {
       console.error(e)
+      alert('Failed to start checkout: ' + e.message)
       setSaving(false)
     }
   }
@@ -202,7 +175,7 @@ export default function AddBusiness() {
             </div>
 
             <button onClick={save} disabled={saving || keywords.filter(k => k.trim()).length === 0} className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '16px', fontSize: 13 }}>
-              {saving ? '🚀 Adding Business...' : '🚀 Add Business & Run First Audit'}
+              {saving ? '💳 Redirecting to checkout...' : '💳 Continue to Payment — $79/mo'}
             </button>
             {keywords.filter(k => k.trim()).length === 0 && (
               <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--dim)', marginTop: 10 }}>Enter at least one keyword to continue</p>
