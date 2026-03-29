@@ -207,11 +207,20 @@ export default function DashboardLayout({ children }) {
   const pathname  = usePathname()
   const router    = useRouter()
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const [collapsed, setCollapsed]       = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [businesses, setBusinesses]     = useState([])
   const [selectedBiz, setSelectedBiz]   = useState(null)
   const dropRef = useRef(null)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     fetch('/api/user')
@@ -249,12 +258,19 @@ export default function DashboardLayout({ children }) {
         <div style={{ position: 'fixed', inset: 0, background: 'radial-gradient(ellipse at 10% 20%, rgba(123,47,255,0.06) 0%, transparent 50%), radial-gradient(ellipse at 90% 80%, rgba(0,200,255,0.04) 0%, transparent 50%)', pointerEvents: 'none', zIndex: 0 }} />
 
         {/* SIDEBAR */}
+        {/* Mobile overlay */}
+        {isMobile && mobileOpen && (
+          <div onClick={() => setMobileOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 99, backdropFilter: 'blur(4px)' }} />
+        )}
+
         <aside style={{
-          width: collapsed ? 68 : 220, flexShrink: 0,
-          background: 'rgba(6,6,18,0.95)', borderRight: '1px solid var(--border)',
+          width: isMobile ? (mobileOpen ? 220 : 0) : (collapsed ? 68 : 220),
+          flexShrink: 0, overflow: isMobile && !mobileOpen ? 'hidden' : 'visible',
+          background: 'rgba(6,6,18,0.97)', borderRight: '1px solid var(--border)',
           display: 'flex', flexDirection: 'column',
-          position: 'sticky', top: 0, height: '100vh',
+          position: isMobile ? 'fixed' : 'sticky', top: 0, height: '100vh',
           backdropFilter: 'blur(20px)', transition: 'width 0.3s ease', zIndex: 100,
+          left: 0,
         }}>
           {/* Logo */}
           <div style={{ padding: '22px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
@@ -382,7 +398,14 @@ export default function DashboardLayout({ children }) {
         </aside>
 
         {/* MAIN */}
-        <main style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1 }}>
+        <main style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1, minWidth: 0 }}>
+          {isMobile && (
+            <button onClick={() => setMobileOpen(!mobileOpen)} style={{ position: 'fixed', top: 16, left: 16, zIndex: 101, width: 40, height: 40, borderRadius: 10, background: 'rgba(6,6,18,0.95)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, cursor: 'pointer', backdropFilter: 'blur(10px)' }}>
+              <div style={{ width: 16, height: 2, background: 'var(--star-white)', borderRadius: 1 }} />
+              <div style={{ width: 16, height: 2, background: 'var(--star-white)', borderRadius: 1 }} />
+              <div style={{ width: 16, height: 2, background: 'var(--star-white)', borderRadius: 1 }} />
+            </button>
+          )}
           {children}
         </main>
       </div>
