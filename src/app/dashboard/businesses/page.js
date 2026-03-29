@@ -86,30 +86,40 @@ function EditModal({ biz, onClose, onSaved }) {
 
     onSaved(data.business)
 
-    if (data.needsAudit && data.addedKeywords?.length > 0) {
-      // Show audit progress screen
-      const kwsToAudit = data.addedKeywords.map(a => a.keyword)
-      setAuditProgress(kwsToAudit.map(kw => ({ keyword: kw, done: false, error: false })))
+    if (data.needsAudit) {
+      // Collect all keywords that need an audit — both new and changed
+      const kwsToAudit = [
+        ...(data.addedKeywords || []).map(a => a.keyword),
+        ...(data.changedKeywords || []).map(c => c.newKeyword),
+      ]
 
-      for (let i = 0; i < kwsToAudit.length; i++) {
-        const keyword = kwsToAudit[i]
-        try {
-          await fetch('/api/places/rank-audit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              businessId: data.business.id,
-              keyword,
-              gridSize: data.business.gridSize || '7x7',
-              spacing: data.business.gridSpacing || 'medium',
-            }),
-          })
-          setAuditProgress(prev => prev.map((p, j) => j === i ? { ...p, done: true } : p))
-        } catch (e) {
-          setAuditProgress(prev => prev.map((p, j) => j === i ? { ...p, done: true, error: true } : p))
+      if (kwsToAudit.length > 0) {
+        // Show audit progress overlay
+        setAuditProgress(kwsToAudit.map(kw => ({ keyword: kw, done: false, error: false })))
+
+        for (let i = 0; i < kwsToAudit.length; i++) {
+          const keyword = kwsToAudit[i]
+          try {
+            await fetch('/api/places/rank-audit', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                businessId: data.business.id,
+                keyword,
+                gridSize: data.business.gridSize || '7x7',
+                spacing: data.business.gridSpacing || 'medium',
+              }),
+            })
+            setAuditProgress(prev => prev.map((p, j) => j === i ? { ...p, done: true } : p))
+          } catch (e) {
+            setAuditProgress(prev => prev.map((p, j) => j === i ? { ...p, done: true, error: true } : p))
+          }
         }
+        // Only redirect after all audits are done
+        router.push('/dashboard/reports')
+      } else {
+        onClose()
       }
-      router.push('/dashboard/reports')
     } else {
       onClose()
     }
