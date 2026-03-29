@@ -60,6 +60,7 @@ model User {
   agencyName    String?
   phone         String?
   timezone      String?   @default("America/Chicago")
+  hasSeenOnboarding Boolean @default(false)
 
   // Plan
   plan          Plan      @default(ORBIT)
