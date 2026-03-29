@@ -333,7 +333,7 @@ export default function AddBusiness() {
                     <span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
                     Processing...
                   </span>
-                : '🔒 Subscribe — $79/mo'
+                : '🔒 Start $1 Trial — then $79/mo'
               }
             </button>
             <div style={{ textAlign: 'center', marginTop: 12, fontSize: 11, color: 'var(--dim2)' }}>
