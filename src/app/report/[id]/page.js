@@ -59,6 +59,9 @@ export default function ReportPage() {
   const hasImprovement = baselineAudit && baselineAudit.id !== audit.id
   const improvementPct = hasImprovement ? Math.round(((baselineAudit.avgRank - audit.avgRank) / baselineAudit.avgRank) * 100) : null
   const reportDate = new Date(audit.createdAt).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' })
+  const keywordChangedAt = audit.keywordChangedAt ? new Date(audit.keywordChangedAt).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' }) : null
+  const keywordChangedFrom = audit.keywordChangedFrom || null
+  const daysTracked = audit.daysTracked || null
   const brandName = whitelabel ? agencyName : 'NebulaSEO'
   const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${business.lat},${business.lng}&zoom=${zoom}&size=${mapW}x${mapH}&scale=2&style=feature:all|element:labels.text.fill|color:0x666666&style=feature:road|color:0xe8e8e8&style=feature:water|color:0xc8d8f0&style=feature:landscape|color:0xf5f5f5&style=feature:poi|visibility:off&style=feature:transit|visibility:off&key=${apiKey}`
 
@@ -157,6 +160,21 @@ export default function ReportPage() {
           </div>
         )}
       </div>
+
+      {/* Keyword change notice — shown on page 2 when keyword was recently changed */}
+      {keywordChangedAt && (
+        <div style={{ margin: '0 0 24px', padding: '16px 20px', borderRadius: 12, background: 'rgba(255,184,48,0.08)', border: '1px solid rgba(255,184,48,0.3)', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <div style={{ fontSize: 22, flexShrink: 0 }}>🔄</div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,184,48,0.95)', marginBottom: 4 }}>Keyword Changed on {keywordChangedAt}</div>
+            <div style={{ fontSize: 12, color: '#555', lineHeight: 1.7 }}>
+              This keyword was changed from <strong>"{keywordChangedFrom}"</strong> to <strong>"{audit.keyword}"</strong> on {keywordChangedAt}.
+              {daysTracked && <> This report only reflects <strong>{daysTracked} day{daysTracked !== 1 ? 's' : ''}</strong> of ranking progress under the new keyword.</>}
+              {' '}Ranking improvements build over time — results will become more meaningful with each future monthly audit.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PAGE 3 — HEATMAP */}
       <div className="page" style={{ ...PAGE, background:'#fff', display:'flex', flexDirection:'column' }}>
