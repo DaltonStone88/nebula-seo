@@ -55,7 +55,7 @@ export default function AddBusiness() {
         }),
       })
       const biz = await res.json()
-      router.push(`/dashboard/businesses`)
+      router.push('/dashboard/reports?tab=heatmap')
     } catch (e) {
       console.error(e)
       setSaving(false)
