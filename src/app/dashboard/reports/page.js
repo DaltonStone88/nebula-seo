@@ -344,19 +344,30 @@ function ReportsContent() {
   useEffect(() => { fetchBusinesses() }, [])
 
   const keyword = selectedBiz?.targetKeywords?.[selectedKeyword]
+  const [fullAuditsByKeyword, setFullAuditsByKeyword] = useState({})
 
   useEffect(() => {
-    if (!selectedBiz?.id || !keyword) return
+    if (!selectedBiz?.id) return
+    const keywords = selectedBiz.targetKeywords || []
+    if (keywords.length === 0) return
+    setFullAuditsByKeyword({})
     setBaselineFull(null); setLatestFull(null)
-    fetch(`/api/places/rank-audit?businessId=${selectedBiz.id}&keyword=${encodeURIComponent(keyword)}`)
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setBaselineFull(data.find(a => a.isBaseline) || data[0])
-          setLatestFull(data[data.length - 1])
-        }
-      })
-  }, [selectedBiz?.id, keyword])
+    keywords.forEach(kw => {
+      fetch(`/api/places/rank-audit?businessId=${selectedBiz.id}&keyword=${encodeURIComponent(kw)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (Array.isArray(data) && data.length > 0) {
+            const base = data.find(a => a.isBaseline) || data[0]
+            const lat = data[data.length - 1]
+            setFullAuditsByKeyword(prev => ({ ...prev, [kw]: { baseline: base, latest: lat } }))
+            if (kw === keywords[0]) {
+              setBaselineFull(base)
+              setLatestFull(lat)
+            }
+          }
+        })
+    })
+  }, [selectedBiz?.id])
 
   const runAudit = async () => {
     if (!selectedBiz || !keyword) return
@@ -506,7 +517,9 @@ function ReportsContent() {
                     const zoom = cols <= 5 ? 14 : cols <= 7 ? 13 : cols <= 10 ? 12 : 11
                     const mapW = 640, mapH = 480
                     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-                    const gridData = latest ? (Array.isArray(latest.gridData) ? latest.gridData : []) : []
+                    // Use full audit data (with gridData) from the per-keyword fetch
+                    const fullBaseline = fullAuditsByKeyword[kw]?.baseline || null
+                    const fullLatest = fullAuditsByKeyword[kw]?.latest || null
 
                     return (
                       <div key={i} style={{ borderRadius: 16, border: '1px solid var(--border)', background: 'rgba(232,238,255,0.02)', marginBottom: 28, overflow: 'hidden' }}>
@@ -605,11 +618,11 @@ function ReportsContent() {
                           }
 
                           const hasMultiple = kwAudits.length >= 2
-                          const rightAudit = hasMultiple ? latest : null
+                          const rightAudit = hasMultiple ? (fullLatest || latest) : null
                           const rightLabel = hasMultiple ? 'Latest Audit' : 'Next Audit'
                           return (
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, padding: '20px' }}>
-                              {renderMap(baseline || latest, 'Baseline Audit')}
+                              {renderMap(fullBaseline || fullLatest || baseline || latest, 'Baseline Audit')}
                               {renderMap(rightAudit, rightLabel)}
                             </div>
                           )
