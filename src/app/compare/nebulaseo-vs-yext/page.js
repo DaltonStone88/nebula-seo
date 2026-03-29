@@ -40,6 +40,7 @@ export default function Page() {
         'Advanced analytics and enterprise integrations',
         'Longer track record with large brands',
       ]}
+      rows={rows}
       verdict="Yext is the right tool if you're managing a franchise with hundreds of locations and need enterprise-grade listings management across every directory on the internet. For everyone else — local businesses, service providers, and agencies managing tens of locations — NebulaSEO delivers more meaningful GBP impact at a fraction of the cost, without the annual contract commitment. The decision usually comes down to one question: do you need listings management at scale, or do you need GBP ranking and content? If it's the latter, NebulaSEO wins on both price and focus."
     />
   )
