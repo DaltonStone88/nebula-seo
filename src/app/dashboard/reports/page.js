@@ -132,52 +132,63 @@ function ReportsContent() {
     try {
       const { default: jsPDF } = await import('jspdf')
       const { default: html2canvas } = await import('html2canvas')
-      
-      // Open report in hidden iframe to render it
+
+      // Load report in hidden iframe
       const iframe = document.createElement('iframe')
-      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:900px;height:100vh;border:none;'
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:960px;height:2000px;border:none;overflow:hidden;'
       iframe.src = `/report/${auditId}`
       document.body.appendChild(iframe)
-      
-      await new Promise(resolve => iframe.onload = () => setTimeout(resolve, 3000))
-      
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+
+      // Wait for full render including map tiles
+      await new Promise(resolve => iframe.onload = () => setTimeout(resolve, 4000))
+
       const iframeDoc = iframe.contentDocument
-      const pages = iframeDoc.querySelectorAll('[style*="pageBreakAfter"], [style*="page-break-after"], div[style*="minHeight: 100vh"], div[style*="min-height: 100vh"]')
-      
-      const allDivs = Array.from(iframeDoc.body.querySelectorAll(':scope > div > div'))
-      const pageDivs = allDivs.length > 0 ? allDivs : [iframeDoc.body.firstChild]
-      
-      // Capture the whole report body as pages
       const reportEl = iframeDoc.body.firstChild
-      const canvas = await html2canvas(reportEl, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        width: 900,
-        backgroundColor: '#ffffff',
-      })
-      
-      const imgData = canvas.toDataURL('image/jpeg', 0.95)
-      const pageW = 210 // A4 width mm
-      const pageH = 297 // A4 height mm
-      const imgW = pageW
-      const imgH = (canvas.height * pageW) / canvas.width
-      
-      let y = 0
-      let pageNum = 0
-      while (y < imgH) {
-        if (pageNum > 0) doc.addPage()
-        doc.addImage(imgData, 'JPEG', 0, -y, imgW, imgH)
-        y += pageH
-        pageNum++
+      if (!reportEl) throw new Error('Report element not found')
+
+      // Find all page sections — they are direct children of the report wrapper
+      const sections = Array.from(reportEl.children)
+      if (sections.length === 0) throw new Error('No sections found')
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const pageW = 210
+      const pageH = 297
+
+      for (let i = 0; i < sections.length; i++) {
+        const section = sections[i]
+        if (i > 0) doc.addPage()
+
+        const canvas = await html2canvas(section, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: null,
+          width: 960,
+          windowWidth: 960,
+          logging: false,
+        })
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.92)
+        // Scale to fit A4 width, maintain aspect ratio
+        const imgW = pageW
+        const imgH = (canvas.height / canvas.width) * pageW
+
+        // If section is taller than page, scale to fit height instead
+        if (imgH > pageH) {
+          const scaledW = (canvas.width / canvas.height) * pageH
+          const xOffset = (pageW - scaledW) / 2
+          doc.addImage(imgData, 'JPEG', xOffset, 0, scaledW, pageH)
+        } else {
+          // Center vertically on page
+          const yOffset = (pageH - imgH) / 2
+          doc.addImage(imgData, 'JPEG', 0, yOffset, imgW, imgH)
+        }
       }
-      
+
       document.body.removeChild(iframe)
       doc.save(`seo-report-${new Date().toISOString().split('T')[0]}.pdf`)
-    } catch (e) { 
+    } catch (e) {
       console.error('PDF error:', e)
-      // Fallback: open report page for printing
       window.open(`/report/${auditId}`, '_blank')
     }
     setDownloading(null)
