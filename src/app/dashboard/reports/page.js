@@ -389,11 +389,7 @@ function ReportsContent() {
       <div style={{ padding: '20px 36px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(6,6,18,0.5)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>Reports</h1>
-          <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: 4 }}>
-            {[['reports','Performance'],['heatmap','Heatmap Audits']].map(([v,l]) => (
-              <button key={v} onClick={() => setView(v)} style={{ padding: '7px 18px', borderRadius: 7, border: 'none', cursor: 'pointer', background: view===v ? 'rgba(123,47,255,0.25)' : 'transparent', color: view===v ? 'var(--star-white)' : 'var(--dim)', fontSize: 12, fontFamily: 'var(--font-body)', fontWeight: view===v ? 600 : 400 }}>{l}</button>
-            ))}
-          </div>
+
         </div>
         {businesses.length > 0 && (
           <select onChange={e => setSelectedBiz(businesses.find(b => b.id === e.target.value))} style={{ ...selectStyle, width: 'auto' }}>
@@ -536,91 +532,73 @@ function ReportsContent() {
                           </div>
                         </div>
 
-                        {/* Content: two heatmaps side by side */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 320 }}>
-
-                          {/* LEFT: Latest audit heatmap */}
-                          <div style={{ position: 'relative', borderRight: '1px solid var(--border)' }}>
-                            {/* Label */}
-                            <div style={{ position: 'absolute', top: 10, left: 12, zIndex: 3, background: 'rgba(6,6,18,0.85)', backdropFilter: 'blur(4px)', borderRadius: 8, padding: '5px 10px', display: 'flex', gap: 16, alignItems: 'center' }}>
-                              <div>
-                                <div style={{ fontSize: 9, color: 'var(--dim)', textTransform: 'uppercase', letterSpacing: 1 }}>{latest ? new Date(latest.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No data'}</div>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--star-white)' }}>Latest Audit</div>
+                        {/* Two heatmaps: LEFT=baseline, RIGHT=latest or placeholder */}
+                        {(() => {
+                          const renderMap = (audit, label) => {
+                            const aGridData = audit ? (Array.isArray(audit.gridData) ? audit.gridData : []) : []
+                            return (
+                              <div style={{ position: 'relative', minHeight: 320 }}>
+                                {audit ? (
+                                  <>
+                                    <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${selectedBiz.lat},${selectedBiz.lng}&zoom=${zoom}&size=${mapW}x${mapH}&scale=2&style=feature:all|element:labels.text.fill|color:0x888888&style=feature:road|color:0x2a2a3a&style=feature:water|color:0x0a0a2f&style=feature:landscape|color:0x1a1a2e&style=feature:poi|visibility:off&key=${apiKey}`}
+                                      alt="map" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <div style={{ position: 'absolute', inset: 0 }}>
+                                      {aGridData.map((cell, ci) => {
+                                        const sc = Math.pow(2, zoom), ws = 256 * sc
+                                        const x = (cell.lng - selectedBiz.lng) / 360 * ws
+                                        const lr = cell.lat * Math.PI / 180, cr = selectedBiz.lat * Math.PI / 180
+                                        const y = -(Math.log(Math.tan(Math.PI/4 + lr/2)) - Math.log(Math.tan(Math.PI/4 + cr/2))) / (2*Math.PI) * ws
+                                        const px = mapW/2 + x, py = mapH/2 + y
+                                        const px2 = (px/mapW)*100, py2 = (py/mapH)*100
+                                        if (px2 < 0 || px2 > 100 || py2 < 0 || py2 > 100) return null
+                                        const color = cell.rank === '20+' || cell.rank > 15 ? '#b01414' : cell.rank <= 3 ? '#1ec85a' : cell.rank <= 7 ? '#6bc94a' : cell.rank <= 10 ? '#c8c020' : '#e07820'
+                                        return <div key={ci} style={{ position: 'absolute', left: `${px2}%`, top: `${py2}%`, transform: 'translate(-50%,-50%)', width: circleSize, height: circleSize, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: circleFontSize, fontWeight: 800, background: color, color: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.5)', zIndex: 1 }}>{cell.rank}</div>
+                                      })}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${selectedBiz.lat},${selectedBiz.lng}&zoom=${zoom}&size=${mapW}x${mapH}&scale=2&style=feature:all|element:labels.text.fill|color:0x888888&style=feature:road|color:0x2a2a3a&style=feature:water|color:0x0a0a2f&style=feature:landscape|color:0x1a1a2e&style=feature:poi|visibility:off&key=${apiKey}`}
+                                      alt="map" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(2px)', transform: 'scale(1.05)' }} />
+                                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(6,6,18,0.78)' }} />
+                                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
+                                      <div style={{ fontSize: 32 }}>🔄</div>
+                                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 900, color: '#fff' }}>Next Audit</div>
+                                      {nextDate && <>
+                                        <div style={{ textAlign: 'center' }}>
+                                          <div style={{ fontFamily: 'var(--font-display)', fontSize: 44, fontWeight: 900, color: 'var(--nebula-blue)', lineHeight: 1 }}>{daysLeft}</div>
+                                          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 3 }}>day{daysLeft !== 1 ? 's' : ''} remaining</div>
+                                        </div>
+                                        <div style={{ width: '75%', height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                                          <div style={{ height: '100%', borderRadius: 3, width: `${pct}%`, background: 'linear-gradient(90deg, var(--nebula-purple), var(--nebula-blue))' }} />
+                                        </div>
+                                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', textAlign: 'center' }}>{nextDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+                                      </>}
+                                    </div>
+                                  </>
+                                )}
+                                {/* Audit label badge */}
+                                <div style={{ position: 'absolute', top: 10, left: 12, zIndex: 4, background: 'rgba(6,6,18,0.85)', borderRadius: 8, padding: '5px 10px', display: 'flex', gap: 12, alignItems: 'center' }}>
+                                  <div>
+                                    <div style={{ fontSize: 9, color: 'var(--dim)', textTransform: 'uppercase', letterSpacing: 1 }}>{audit ? new Date(audit.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Upcoming'}</div>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--star-white)' }}>{label}</div>
+                                  </div>
+                                  {audit && <>
+                                    <div style={{ textAlign: 'right' }}><div style={{ fontSize: 9, color: 'var(--dim)' }}>Avg</div><div style={{ fontSize: 14, fontWeight: 900, color: 'var(--nebula-blue)' }}>{audit.avgRank}</div></div>
+                                    <div style={{ textAlign: 'right' }}><div style={{ fontSize: 9, color: 'var(--dim)' }}>Top 3</div><div style={{ fontSize: 14, fontWeight: 900, color: 'var(--nebula-purple)' }}>{audit.top3Percent}%</div></div>
+                                  </>}
+                                </div>
                               </div>
-                              {latest && <>
-                                <div style={{ textAlign: 'right' }}>
-                                  <div style={{ fontSize: 9, color: 'var(--dim)' }}>Avg Rank</div>
-                                  <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--nebula-blue)' }}>{latest.avgRank}</div>
-                                </div>
-                                <div style={{ textAlign: 'right' }}>
-                                  <div style={{ fontSize: 9, color: 'var(--dim)' }}>Top 3</div>
-                                  <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--nebula-purple)' }}>{latest.top3Percent}%</div>
-                                </div>
-                              </>}
+                            )
+                          }
+                          const hasMultiple = latest && baseline && latest.id !== baseline.id
+                          return (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+                              <div style={{ borderRight: '1px solid var(--border)' }}>{renderMap(baseline || latest, 'Baseline Audit')}</div>
+                              <div>{renderMap(hasMultiple ? latest : null, hasMultiple ? 'Latest Audit' : 'Next Audit')}</div>
                             </div>
-                            {latest ? (
-                              <>
-                                <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${selectedBiz.lat},${selectedBiz.lng}&zoom=${zoom}&size=${mapW}x${mapH}&scale=2&style=feature:all|element:labels.text.fill|color:0x888888&style=feature:road|color:0x2a2a3a&style=feature:water|color:0x0a0a2f&style=feature:landscape|color:0x1a1a2e&style=feature:poi|visibility:off&key=${apiKey}`}
-                                  alt="map" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                                <div style={{ position: 'absolute', inset: 0 }}>
-                                  {gridData.map((cell, ci) => {
-                                    const scale = Math.pow(2, zoom)
-                                    const worldSize = 256 * scale
-                                    const x = (cell.lng - selectedBiz.lng) / 360 * worldSize
-                                    const latRad = cell.lat * Math.PI / 180
-                                    const centerLatRad = selectedBiz.lat * Math.PI / 180
-                                    const y = -(Math.log(Math.tan(Math.PI/4 + latRad/2)) - Math.log(Math.tan(Math.PI/4 + centerLatRad/2))) / (2*Math.PI) * worldSize
-                                    const px = mapW/2 + x, py = mapH/2 + y
-                                    const pct_x = (px/mapW)*100, pct_y = (py/mapH)*100
-                                    if (pct_x < 0 || pct_x > 100 || pct_y < 0 || pct_y > 100) return null
-                                    const color = cell.rank === '20+' || cell.rank > 15 ? '#b01414' : cell.rank <= 3 ? '#1ec85a' : cell.rank <= 7 ? '#6bc94a' : cell.rank <= 10 ? '#c8c020' : '#e07820'
-                                    return (
-                                      <div key={ci} style={{ position: 'absolute', left: `${pct_x}%`, top: `${pct_y}%`, transform: 'translate(-50%,-50%)', width: circleSize, height: circleSize, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: circleFontSize, fontWeight: 800, background: color, color: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.5)', zIndex: 1 }}>{cell.rank}</div>
-                                    )
-                                  })}
-                                </div>
-                              </>
-                            ) : (
-                              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(6,6,18,0.6)' }}>
-                                <div style={{ textAlign: 'center', color: 'var(--dim)' }}>
-                                  <div style={{ fontSize: 28, marginBottom: 8 }}>📊</div>
-                                  <div style={{ fontSize: 13 }}>First audit pending</div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* RIGHT: Next audit card — same map blurred + dark overlay + countdown */}
-                          <div style={{ position: 'relative' }}>
-                            {/* Same map blurred behind */}
-                            <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${selectedBiz.lat},${selectedBiz.lng}&zoom=${zoom}&size=${mapW}x${mapH}&scale=2&style=feature:all|element:labels.text.fill|color:0x888888&style=feature:road|color:0x2a2a3a&style=feature:water|color:0x0a0a2f&style=feature:landscape|color:0x1a1a2e&style=feature:poi|visibility:off&key=${apiKey}`}
-                              alt="map" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(3px)', transform: 'scale(1.05)' }} />
-                            {/* Dark overlay */}
-                            <div style={{ position: 'absolute', inset: 0, background: 'rgba(6,6,18,0.75)', backdropFilter: 'blur(2px)' }} />
-                            {/* Content centered */}
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }}>
-                              <div style={{ fontSize: 36 }}>🔄</div>
-                              <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 900, color: '#fff', textAlign: 'center' }}>Next Audit</div>
-                              {nextDate ? (
-                                <>
-                                  <div style={{ textAlign: 'center' }}>
-                                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 48, fontWeight: 900, color: 'var(--nebula-blue)', lineHeight: 1 }}>{daysLeft}</div>
-                                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>day{daysLeft !== 1 ? 's' : ''} remaining</div>
-                                  </div>
-                                  <div style={{ width: '80%', height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
-                                    <div style={{ height: '100%', borderRadius: 3, width: `${pct}%`, background: 'linear-gradient(90deg, var(--nebula-purple), var(--nebula-blue))' }} />
-                                  </div>
-                                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
-                                    Scheduled for {nextDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                                  </div>
-                                </>
-                              ) : (
-                                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>Your first audit will generate<br/>your baseline report</div>
-                              )}
-                            </div>
-                          </div>
-
-                        </div>
+                          )
+                        })()}
                       </div>
                     )
                   })}
