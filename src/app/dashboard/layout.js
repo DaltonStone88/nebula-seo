@@ -8,10 +8,11 @@ export const BusinessContext = createContext({ businesses: [], selectedBiz: null
 export function useBusinessContext() { return useContext(BusinessContext) }
 
 const navItems = [
-  { icon: '▦', label: 'Dashboard',   href: '/dashboard' },
-  { icon: '⚡', label: 'Automation', href: '/dashboard/automation' },
-  { icon: '⭐', label: 'Reviews',    href: '/dashboard/reviews' },
-  { icon: '📊', label: 'Reports',    href: '/dashboard/reports' },
+  { icon: '▦', label: 'Dashboard',          href: '/dashboard' },
+  { icon: '⚡', label: 'Automation',        href: '/dashboard/automation' },
+  { icon: '⭐', label: 'Reviews',           href: '/dashboard/reviews' },
+  { icon: '📊', label: 'Reports',           href: '/dashboard/reports' },
+  { icon: '🏢', label: 'Business Settings', href: '/dashboard/business-settings' },
 ]
 
 const bottomItems = [
