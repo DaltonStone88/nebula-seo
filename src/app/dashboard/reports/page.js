@@ -472,60 +472,142 @@ function ReportsContent() {
           )
         ) : (
           <div>
-            {/* Countdown to next audit */}
             {selectedBiz && (() => {
               const allAudits = (selectedBiz.rankAudits || [])
-              const lastAudit = allAudits.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
+              const lastAudit = [...allAudits].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
               const nextDate = lastAudit ? new Date(new Date(lastAudit.createdAt).getTime() + 30*24*60*60*1000) : null
               const daysLeft = nextDate ? Math.max(0, Math.ceil((nextDate - new Date()) / (1000*60*60*24))) : null
               const pct = nextDate ? Math.min(100, Math.round(((30 - daysLeft) / 30) * 100)) : 0
+              const kwList = selectedBiz.targetKeywords || []
+
               return (
-                <div style={{ borderRadius: 16, padding: '20px 28px', background: 'rgba(232,238,255,0.02)', border: '1px solid var(--border)', marginBottom: 24 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700 }}>
-                      {daysLeft === null ? 'No audits run yet' : daysLeft === 0 ? '🟢 Next audit runs today' : `⏰ Next audit in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`}
+                <>
+                  {/* Countdown banner */}
+                  <div style={{ borderRadius: 16, padding: '18px 24px', background: 'rgba(232,238,255,0.02)', border: '1px solid var(--border)', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 20 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, marginBottom: 10 }}>
+                        {daysLeft === null ? '📊 No audits run yet' : daysLeft === 0 ? '🟢 Next audit runs today' : `⏰ Next audit in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`}
+                      </div>
+                      <div style={{ height: 6, borderRadius: 3, background: 'rgba(232,238,255,0.08)', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', borderRadius: 3, width: nextDate ? `${pct}%` : '0%', background: 'linear-gradient(90deg, var(--nebula-purple), var(--nebula-blue))' }} />
+                      </div>
                     </div>
-                    {nextDate && <div style={{ fontSize: 11, color: 'var(--dim)' }}>{nextDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
+                    {nextDate && (
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 1 }}>Next audit</div>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700 }}>{nextDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                      </div>
+                    )}
                   </div>
-                  {nextDate && (
-                    <div style={{ height: 6, borderRadius: 3, background: 'rgba(232,238,255,0.08)', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', borderRadius: 3, width: `${pct}%`, background: 'linear-gradient(90deg, var(--nebula-purple), var(--nebula-blue))', transition: 'width 0.5s' }} />
-                    </div>
-                  )}
-                </div>
+
+                  {/* One row per keyword */}
+                  {kwList.map((kw, i) => {
+                    const kwAudits = allAudits.filter(a => a.keyword === kw)
+                    const latest = kwAudits[kwAudits.length - 1]
+                    const baseline = kwAudits.find(a => a.isBaseline)
+                    const imp = baseline && latest && baseline.id !== latest.id ? Math.round(((baseline.avgRank - latest.avgRank) / baseline.avgRank) * 100) : null
+                    const cols = latest ? parseInt((latest.gridSize || '7x7').split('x')[0]) : 7
+                    const zoom = cols <= 5 ? 14 : cols <= 7 ? 13 : cols <= 10 ? 12 : 11
+                    const mapW = 640, mapH = 480
+                    const circleSize = cols <= 7 ? 18 : cols <= 10 ? 14 : 11
+                    const circleFontSize = 7
+                    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+                    const gridData = latest ? (Array.isArray(latest.gridData) ? latest.gridData : []) : []
+
+                    return (
+                      <div key={i} style={{ borderRadius: 16, border: '1px solid var(--border)', background: 'rgba(232,238,255,0.02)', marginBottom: 20, overflow: 'hidden' }}>
+                        {/* Header row */}
+                        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(6,6,18,0.4)' }}>
+                          <div>
+                            <div style={{ fontSize: 10, color: 'var(--nebula-blue)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 3 }}>Keyword {i+1}</div>
+                            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700 }}>{kw}</div>
+                          </div>
+                          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                            {imp !== null && (
+                              <div style={{ fontSize: 13, fontWeight: 600, color: imp > 0 ? 'rgba(20,200,100,0.9)' : 'var(--nebula-pink)' }}>
+                                {imp > 0 ? `↑ ${imp}% improvement` : `↓ ${Math.abs(imp)}% decline`}
+                              </div>
+                            )}
+                            {latest && (
+                              <button onClick={() => downloadReport(latest.id)} disabled={!!downloading} style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid rgba(123,47,255,0.4)', background: 'rgba(123,47,255,0.15)', color: 'var(--star-white)', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--font-body)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                {downloading === latest.id ? '⏳ Generating...' : '⬇ Download PDF'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Content: stats left, heatmap right */}
+                        <div style={{ display: 'flex', gap: 0 }}>
+                          {/* Stats panel */}
+                          <div style={{ width: 200, flexShrink: 0, padding: '24px 20px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            <div>
+                              <div style={{ fontSize: 10, color: 'var(--dim)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Avg Ranking</div>
+                              <div style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 900, color: 'var(--nebula-blue)', lineHeight: 1 }}>{latest ? latest.avgRank : '—'}</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 10, color: 'var(--dim)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Top 3</div>
+                              <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 900, color: 'var(--nebula-purple)', lineHeight: 1 }}>{latest ? `${latest.top3Percent}%` : '—'}</div>
+                            </div>
+                            {baseline && latest && baseline.id !== latest.id && (
+                              <div>
+                                <div style={{ fontSize: 10, color: 'var(--dim)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Baseline</div>
+                                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--dim)' }}>{baseline.avgRank}</div>
+                              </div>
+                            )}
+                            {latest && (
+                              <div>
+                                <div style={{ fontSize: 10, color: 'var(--dim)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Last Run</div>
+                                <div style={{ fontSize: 12, color: 'var(--dim)' }}>{new Date(latest.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                              </div>
+                            )}
+                            {!latest && (
+                              <div style={{ fontSize: 12, color: 'var(--dim)' }}>No audit data yet. Your first audit runs automatically.</div>
+                            )}
+                          </div>
+
+                          {/* Heatmap */}
+                          <div style={{ flex: 1, position: 'relative', minHeight: 280 }}>
+                            {latest ? (
+                              <>
+                                <img
+                                  src={`https://maps.googleapis.com/maps/api/staticmap?center=${selectedBiz.lat},${selectedBiz.lng}&zoom=${zoom}&size=${mapW}x${mapH}&scale=2&style=feature:all|element:labels.text.fill|color:0x888888&style=feature:road|color:0x2a2a3a&style=feature:water|color:0x0a0a2f&style=feature:landscape|color:0x1a1a2e&style=feature:poi|visibility:off&key=${apiKey}`}
+                                  alt="map"
+                                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+                                <div style={{ position: 'absolute', inset: 0 }}>
+                                  {gridData.map((cell, ci) => {
+                                    const scale = Math.pow(2, zoom)
+                                    const worldSize = 256 * scale
+                                    const x = (cell.lng - selectedBiz.lng) / 360 * worldSize
+                                    const latRad = cell.lat * Math.PI / 180
+                                    const centerLatRad = selectedBiz.lat * Math.PI / 180
+                                    const y = -(Math.log(Math.tan(Math.PI/4 + latRad/2)) - Math.log(Math.tan(Math.PI/4 + centerLatRad/2))) / (2*Math.PI) * worldSize
+                                    const px = mapW/2 + x, py = mapH/2 + y
+                                    const pct_x = (px/mapW)*100, pct_y = (py/mapH)*100
+                                    if (pct_x < 0 || pct_x > 100 || pct_y < 0 || pct_y > 100) return null
+                                    const color = cell.rank === '20+' || cell.rank > 15 ? '#b01414' : cell.rank <= 3 ? '#1ec85a' : cell.rank <= 7 ? '#6bc94a' : cell.rank <= 10 ? '#c8c020' : '#e07820'
+                                    return (
+                                      <div key={ci} style={{ position: 'absolute', left: `${pct_x}%`, top: `${pct_y}%`, transform: 'translate(-50%,-50%)', width: circleSize, height: circleSize, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: circleFontSize, fontWeight: 800, background: color, color: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.5)', zIndex: 1 }}>{cell.rank}</div>
+                                    )
+                                  })}
+                                </div>
+                              </>
+                            ) : (
+                              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(6,6,18,0.4)' }}>
+                                <div style={{ textAlign: 'center', color: 'var(--dim)' }}>
+                                  <div style={{ fontSize: 28, marginBottom: 8 }}>📊</div>
+                                  <div style={{ fontSize: 13 }}>Audit pending</div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </>
               )
             })()}
-
-            {selectedBiz && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 16 }}>
-                {(selectedBiz.targetKeywords||[]).map((kw,i) => {
-                  const kwAudits = (selectedBiz.rankAudits||[]).filter(a => a.keyword === kw)
-                  const latest = kwAudits[kwAudits.length-1]
-                  const baseline = kwAudits.find(a => a.isBaseline)
-                  const imp = baseline && latest && baseline.id !== latest.id ? Math.round(((baseline.avgRank-latest.avgRank)/baseline.avgRank)*100) : null
-                  return (
-                    <div key={i} onClick={() => { setSelectedKeyword(i); setView('heatmap') }} style={{ borderRadius: 16, background: 'rgba(232,238,255,0.02)', border: '1px solid var(--border)', padding: 24, cursor: 'pointer', transition: 'border-color 0.2s, background 0.2s' }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(123,47,255,0.4)'; e.currentTarget.style.background = 'rgba(123,47,255,0.05)' }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'rgba(232,238,255,0.02)' }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                        <div style={{ fontSize: 11, color: 'var(--nebula-blue)', letterSpacing: 2, textTransform: 'uppercase' }}>Keyword {i+1}</div>
-                        <div style={{ fontSize: 10, color: 'var(--dim)' }}>View map →</div>
-                      </div>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, marginBottom: 14 }}>{kw}</div>
-                      {latest ? (<>
-                        <div style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 900, color: 'var(--nebula-blue)', marginBottom: 4 }}>{latest.avgRank}</div>
-                        <div style={{ fontSize: 12, color: 'var(--dim)', marginBottom: 8 }}>Average ranking</div>
-                        {imp !== null && <div style={{ fontSize: 13, fontWeight: 600, color: imp>0 ? 'rgba(20,200,100,0.9)' : 'var(--nebula-pink)' }}>{imp>0 ? `↑ ${imp}% improvement` : `↓ ${Math.abs(imp)}% decline`}</div>}
-                        <div style={{ fontSize: 11, color: 'var(--dim)', marginTop: 4 }}>Top 3: {latest.top3Percent}%</div>
-                      </>) : (
-                        <div style={{ fontSize: 13, color: 'var(--dim)' }}>No audit data yet</div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
           </div>
         )}
       </div>
