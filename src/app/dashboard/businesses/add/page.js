@@ -74,7 +74,14 @@ export default function AddBusiness() {
         }
       }
 
-      // 4. Redirect to reports
+      // 4. Kick off post generation in the background (don't await — let it run async)
+      fetch('/api/automation/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessId: biz.id }),
+      }).catch(e => console.error('Post generation failed:', e))
+
+      // 5. Redirect to reports
       router.push('/dashboard/reports')
     } catch (e) {
       console.error(e)
