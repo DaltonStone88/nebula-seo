@@ -105,9 +105,6 @@ model Business {
   gridSize       String?  @default("7x7")
   gridSpacing    String?  @default("medium")
 
-  // Keyword change tracking (per keyword slot, stored as JSON: [{keyword, changedAt, changedFrom}])
-  keywordHistory Json?
-
   // Stats
   avgRating   Float?   @default(0)
   totalReviews Int?    @default(0)
@@ -165,11 +162,6 @@ model RankAudit {
   top3Percent Float
   isBaseline  Boolean  @default(false)
   gridSize    String?  @default("7x7")
-
-  // Keyword change tracking
-  keywordChangedAt   DateTime? // set when this audit starts a new keyword after a change
-  keywordChangedFrom String?   // the old keyword that was replaced
-  daysTracked        Int?      // how many days since keyword was set (for PDF note)
 
   businessId  String
   business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
