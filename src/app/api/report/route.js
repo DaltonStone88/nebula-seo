@@ -6,22 +6,18 @@ import { NextResponse } from 'next/server'
 export async function GET(req) {
   const { searchParams } = new URL(req.url)
   const secret = searchParams.get('secret')
-  
-  // Allow access via secret param (used by PDF generator) or session
-  const validSecret = secret && secret === process.env.NEXTAUTH_SECRET
-  
-  if (!validSecret) {
-    const session = await getServerSession(authOptions)
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-  
-  const session = validSecret ? null : await getServerSession(authOptions)
-
-  const { searchParams } = new URL(req.url)
   const auditId = searchParams.get('auditId')
+
   if (!auditId) return NextResponse.json({ error: 'auditId required' }, { status: 400 })
 
-  // Get the audit
+  const validSecret = secret && secret === process.env.NEXTAUTH_SECRET
+  let session = null
+
+  if (!validSecret) {
+    session = await getServerSession(authOptions)
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const audit = await prisma.rankAudit.findFirst({
     where: { id: auditId, ...(session ? { business: { userId: session.user.id } } : {}) },
     include: { business: true },
@@ -30,19 +26,14 @@ export async function GET(req) {
 
   const business = audit.business
 
-  // Get baseline audit for this keyword
   const baselineAudit = await prisma.rankAudit.findFirst({
     where: { businessId: business.id, keyword: audit.keyword, isBaseline: true },
   })
 
-  // Get all audits for this keyword to find competitors
-  // We'll use the Places API to get nearby competitors
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
   let competitors = []
   try {
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${business.lat},${business.lng}&radius=5000&keyword=${encodeURIComponent(audit.keyword)}&key=${apiKey}`
-    )
+    const res = await fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${business.lat},${business.lng}&radius=5000&keyword=${encodeURIComponent(audit.keyword)}&key=${apiKey}`)
     const data = await res.json()
     if (data.results) {
       competitors = data.results.slice(0, 8).map((p, i) => ({
@@ -57,7 +48,6 @@ export async function GET(req) {
     console.error('Failed to fetch competitors', e)
   }
 
-  // Lead data — from GBP when available, mock for now
   const leadData = {
     calls: business.totalCalls || 0,
     directions: business.totalDirections || 0,
