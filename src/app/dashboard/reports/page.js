@@ -99,27 +99,18 @@ function ReportsContent() {
   const downloadReport = async (auditId) => {
     setDownloading(auditId)
     try {
-      // Fetch report data
-      const res = await fetch(`/api/report?auditId=${auditId}`)
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
-
-      // Build a complete self-contained HTML report
-      const html = buildReportHTML(data)
-
-      // Create blob and trigger download as HTML file that can be printed to PDF
-      const blob = new Blob([html], { type: 'text/html' })
-      const url = URL.createObjectURL(blob)
-
-      // Open in new window sized to A4 and auto-print
-      const win = window.open(url, '_blank', 'width=900,height=700')
-      if (win) {
-        win.addEventListener('load', () => {
-          setTimeout(() => {
-            win.print()
-          }, 1500)
-        })
+      const res = await fetch(`/api/report/pdf?auditId=${auditId}`)
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to generate PDF')
       }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `seo-report-${new Date().toISOString().split('T')[0]}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
     } catch (e) {
       console.error(e)
       alert('Failed to generate report: ' + e.message)
