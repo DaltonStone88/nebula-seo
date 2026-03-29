@@ -254,7 +254,19 @@ export default function DashboardLayout({ children }) {
 
   return (
     <BusinessContext.Provider value={{ businesses, selectedBiz, setSelectedBiz }}>
-      <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--void)', fontFamily: 'var(--font-body)' }}>
+      <style>{`
+        .dash-main { overflow-x: hidden !important; }
+        .dash-main > * { max-width: 100%; }
+        @media(max-width:768px){
+          .dash-page-pad { padding: 20px 16px !important; }
+          .dash-header { padding: 14px 16px !important; }
+          .dash-grid-2 { grid-template-columns: 1fr !important; }
+          .dash-grid-3 { grid-template-columns: 1fr !important; }
+          .dash-grid-4 { grid-template-columns: 1fr 1fr !important; }
+          .dash-stat-row { grid-template-columns: 1fr 1fr !important; }
+        }
+      `}</style>
+      <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--void)', fontFamily: 'var(--font-body)', overflow: 'hidden' }}>
         <div style={{ position: 'fixed', inset: 0, background: 'radial-gradient(ellipse at 10% 20%, rgba(123,47,255,0.06) 0%, transparent 50%), radial-gradient(ellipse at 90% 80%, rgba(0,200,255,0.04) 0%, transparent 50%)', pointerEvents: 'none', zIndex: 0 }} />
 
         {/* SIDEBAR */}
@@ -398,7 +410,7 @@ export default function DashboardLayout({ children }) {
         </aside>
 
         {/* MAIN */}
-        <main style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1, minWidth: 0 }}>
+        <main className="dash-main" style={{ flex: 1, overflowX: 'hidden', overflowY: 'auto', position: 'relative', zIndex: 1, minWidth: 0 }}>
           {isMobile && (
             <button onClick={() => setMobileOpen(!mobileOpen)} style={{ position: 'fixed', top: 16, left: 16, zIndex: 101, width: 40, height: 40, borderRadius: 10, background: 'rgba(6,6,18,0.95)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, cursor: 'pointer', backdropFilter: 'blur(10px)' }}>
               <div style={{ width: 16, height: 2, background: 'var(--star-white)', borderRadius: 1 }} />
