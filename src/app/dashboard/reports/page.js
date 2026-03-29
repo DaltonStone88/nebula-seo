@@ -321,15 +321,21 @@ function ReportsContent() {
   }
 
   const fetchBusinesses = async () => {
-    const res = await fetch('/api/businesses')
-    const data = await res.json()
-    setBusinesses(Array.isArray(data) ? data : [])
-    if (!selectedBiz && data.length > 0) setSelectedBiz(data[0])
-    else if (selectedBiz) {
-      const updated = data.find(b => b.id === selectedBiz.id)
-      if (updated) setSelectedBiz(updated)
+    try {
+      const res = await fetch('/api/businesses')
+      const data = await res.json()
+      const list = Array.isArray(data) ? data : []
+      setBusinesses(list)
+      if (!selectedBiz && list.length > 0) setSelectedBiz(list[0])
+      else if (selectedBiz) {
+        const updated = list.find(b => b.id === selectedBiz.id)
+        if (updated) setSelectedBiz(updated)
+      }
+    } catch (e) {
+      console.error('Failed to load businesses', e)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   useEffect(() => { fetchBusinesses() }, [])
