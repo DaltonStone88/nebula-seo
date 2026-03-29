@@ -127,7 +127,6 @@ function ReportsContent() {
   const [latestFull, setLatestFull] = useState(null)
 
   const downloadReport = async (auditId) => {
-    setDownloading(auditId)
     try {
       const { default: jsPDF } = await import('jspdf')
       const { default: html2canvas } = await import('html2canvas')
@@ -199,7 +198,6 @@ function ReportsContent() {
       console.error('PDF error:', e)
       window.open(`/report/${auditId}`, '_blank')
     }
-    setDownloading(null)
   }
 
   const fetchBusinesses = async () => {
