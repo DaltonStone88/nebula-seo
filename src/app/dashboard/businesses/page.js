@@ -84,8 +84,6 @@ function EditModal({ biz, onClose, onSaved }) {
       return
     }
 
-    onSaved(data.business)
-
     if (data.needsAudit) {
       // Collect all keywords that need an audit — both new and changed
       const kwsToAudit = [
@@ -94,7 +92,7 @@ function EditModal({ biz, onClose, onSaved }) {
       ]
 
       if (kwsToAudit.length > 0) {
-        // Show audit progress overlay
+        // Show audit progress overlay BEFORE calling onSaved to prevent unmount
         setAuditProgress(kwsToAudit.map(kw => ({ keyword: kw, done: false, error: false })))
 
         for (let i = 0; i < kwsToAudit.length; i++) {
@@ -115,14 +113,16 @@ function EditModal({ biz, onClose, onSaved }) {
             setAuditProgress(prev => prev.map((p, j) => j === i ? { ...p, done: true, error: true } : p))
           }
         }
-        // Only redirect after all audits are done
-        router.push('/dashboard/reports')
-      } else {
-        onClose()
+        // All done — notify parent then redirect
+        onSaved(data.business)
+        router.push('/dashboard/reports?audited=1')
+        return
       }
-    } else {
-      onClose()
     }
+
+    // No audit needed — just save and close
+    onSaved(data.business)
+    onClose()
   }
 
   const changedCount = keywords.filter((_, i) => getKeywordState(i) === 'changed').length
