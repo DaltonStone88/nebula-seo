@@ -423,6 +423,13 @@ function ReportsContent() {
         {selectedBiz && <div style={{ fontSize: 13, color: 'var(--dim)' }}>{selectedBiz.name}</div>}
       </div>
 
+      {/* Subtle settings hint */}
+      <div style={{ padding: '7px 36px', borderBottom: '1px solid rgba(232,238,255,0.04)', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 11, color: 'var(--dim2)' }}>Update keywords, cities, or grid settings in</span>
+        <a href="/dashboard/business-settings" style={{ fontSize: 11, color: 'rgba(123,47,255,0.6)' }}>Business Settings →</a>
+      </div>
+
+
       <div style={{ padding: '32px 36px' }}>
         {view === 'heatmap' ? (
           !selectedBiz?.lat ? (
