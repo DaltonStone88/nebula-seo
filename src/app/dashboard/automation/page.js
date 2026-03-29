@@ -303,7 +303,7 @@ function PostCard({ post, images, onUpdate, onDelete }) {
               <div style={{ background: 'rgba(10,10,28,0.99)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, maxWidth: 500, width: '100%' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Select Image</div>
                 {images.length === 0
-                  ? <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--dim)', fontSize: 13 }}>No images uploaded yet. Go to Settings tab to upload images.</div>
+                  ? <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--dim)', fontSize: 13 }}>No images uploaded yet. Go to <a href="/dashboard/business-settings" style={{ color: 'var(--nebula-blue)' }}>Business Settings → Automation</a> to upload images.</div>
                   : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                       {images.map(img => (
                         <div key={img.id} onClick={() => { setSelectedImage(img.url); setShowImagePicker(false) }} style={{ borderRadius: 8, overflow: 'hidden', border: `2px solid ${selectedImage === img.url ? 'var(--nebula-purple)' : 'transparent'}`, cursor: 'pointer', aspectRatio: '1' }}>
@@ -330,7 +330,7 @@ function PostCard({ post, images, onUpdate, onDelete }) {
             <button onClick={handleApprove} disabled={saving || !hasImage} className="btn-primary" style={{ fontSize: 12, padding: '8px 20px' }} title={!hasImage ? 'Upload an image first' : ''}>{saving ? '...' : 'Approve'}</button>
             <button onClick={() => setEditing(true)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(232,238,255,0.04)', color: 'var(--star-white)', cursor: 'pointer', fontSize: 12 }}>Edit</button>
             <button onClick={handleReject} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(255,50,50,0.3)', background: 'rgba(255,50,50,0.05)', color: 'rgba(255,100,100,0.8)', cursor: 'pointer', fontSize: 12 }}>Reject</button>
-            {!hasImage && <span style={{ fontSize: 11, color: 'rgba(255,150,100,0.8)' }}>Upload an image to approve</span>}
+            {!hasImage && <span style={{ fontSize: 11, color: 'rgba(255,150,100,0.8)' }}>Upload an image in <a href="/dashboard/business-settings" style={{ color: 'rgba(255,184,48,0.9)' }}>Business Settings</a> to approve</span>}
           </>
         )}
       </div>
@@ -415,7 +415,6 @@ export default function Automation() {
             <button style={tabStyle('queue')} onClick={() => setTab('queue')}>
               Queue {posts.length > 0 && <span style={{ marginLeft: 6, padding: '1px 7px', borderRadius: 10, background: 'rgba(123,47,255,0.3)', fontSize: 11 }}>{posts.length}</span>}
             </button>
-            <button style={tabStyle('settings')} onClick={() => setTab('settings')}>Settings</button>
             <button style={tabStyle('history')} onClick={() => setTab('history')}>History</button>
           </div>
           <button onClick={handleGenerate} disabled={generating} className="btn-primary" style={{ fontSize: 12, padding: '9px 20px', whiteSpace: 'nowrap' }}>
@@ -436,7 +435,7 @@ export default function Automation() {
             ? <div style={{ textAlign: 'center', padding: '80px 0' }}>
                 <div style={{ fontSize: 48, marginBottom: 16 }}>📭</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 10 }}>No Posts Pending Approval</div>
-                <p style={{ fontSize: 14, color: 'var(--dim)', marginBottom: 28, maxWidth: 400, margin: '0 auto 28px' }}>Click Generate Posts to have AI create 10 posts for this month using your keywords, cities, offers, and events.</p>
+                <p style={{ fontSize: 14, color: 'var(--dim)', marginBottom: 28, maxWidth: 400, margin: '0 auto 28px' }}>Click Generate Posts to have AI create 10 posts for this month. Add offers, events, and images in <a href="/dashboard/business-settings" style={{ color: 'var(--nebula-blue)' }}>Business Settings</a> for better results.</p>
                 <button onClick={handleGenerate} disabled={generating} className="btn-primary" style={{ fontSize: 13, padding: '12px 28px' }}>{generating ? 'Generating...' : '🤖 Generate Posts'}</button>
               </div>
             : <>
@@ -454,19 +453,6 @@ export default function Automation() {
                   />
                 ))}
               </>
-        ) : tab === 'settings' ? (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }}>
-            <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Post Content</div>
-              <p style={{ fontSize: 13, color: 'var(--dim)', lineHeight: 1.7, marginBottom: 24 }}>Add offers, events, and updates to give the AI context. The more you add, the better and more specific your posts will be.</p>
-              <ContentSection businessId={selectedBiz.id} />
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Image Library</div>
-              <p style={{ fontSize: 13, color: 'var(--dim)', lineHeight: 1.7, marginBottom: 24 }}>Upload images for your posts. They rotate across all generated posts. You need at least one image to approve posts.</p>
-              <ImageUpload businessId={selectedBiz.id} images={images} onImagesChange={setImages} />
-            </div>
-          </div>
         ) : (
           approvedPosts.length === 0
             ? <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--dim)' }}>
