@@ -18,6 +18,21 @@ export default function RootLayout({ children }) {
         <Providers>
           {children}
         </Providers>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.$crisp=[];
+              window.CRISP_WEBSITE_ID="d44fba33-3cd1-452e-a1a6-f88b0c2b5d3c";
+              (function(){
+                var d=document;
+                var s=d.createElement("script");
+                s.src="https://client.crisp.chat/l.js";
+                s.async=1;
+                d.getElementsByTagName("head")[0].appendChild(s);
+              })();
+            `
+          }}
+        />
       </body>
     </html>
   )
