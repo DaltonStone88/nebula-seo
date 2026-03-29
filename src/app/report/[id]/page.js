@@ -69,7 +69,7 @@ export default function ReportPage() {
   const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${business.lat},${business.lng}&zoom=${zoom}&size=${mapW}x${mapH}&scale=2&style=feature:all|element:labels.text.fill|color:0x666666&style=feature:road|color:0xe0e0e0&style=feature:water|color:0xc8d8f0&style=feature:landscape|color:0xf5f5f5&style=feature:poi|visibility:off&style=feature:transit|visibility:off&key=${apiKey}`
 
   return (
-    <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", color: '#1a1a2e', background: '#fff', maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", color: '#1a1a2e', background: '#fff', width: '100%' }}>
 
       {/* ── PAGE 1: COVER ─────────────────────────────── */}
       <div style={{ minHeight: '100vh', background: `linear-gradient(135deg, #0a0a1f 0%, #1a0a3a 50%, #0a1a3a 100%)`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '60px 70px', pageBreakAfter: 'always', position: 'relative', overflow: 'hidden' }}>
