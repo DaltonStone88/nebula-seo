@@ -50,3 +50,26 @@ export async function POST(req) {
 
   return NextResponse.json(business)
 }
+
+export async function PATCH(req) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = await req.json()
+  const { id, ...updates } = body
+
+  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+
+  // Ensure the business belongs to this user
+  const existing = await prisma.business.findFirst({ where: { id, userId: session.user.id } })
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const allowed = ['name', 'address', 'city', 'state', 'zip', 'phone', 'website', 'category', 'targetKeywords', 'targetCities', 'gridSize', 'gridSpacing', 'status']
+  const data = {}
+  for (const key of allowed) {
+    if (updates[key] !== undefined) data[key] = updates[key]
+  }
+
+  const business = await prisma.business.update({ where: { id }, data })
+  return NextResponse.json(business)
+}
