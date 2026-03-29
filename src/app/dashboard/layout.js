@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, createContext, useContext } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 
 // ── Business context ──────────────────────────────────────────────────────────
 export const BusinessContext = createContext({ businesses: [], selectedBiz: null, setSelectedBiz: () => {} })
@@ -22,6 +23,7 @@ const bottomItems = [
 ]
 
 export default function DashboardLayout({ children }) {
+  const { data: session } = useSession()
   const pathname  = usePathname()
   const router    = useRouter()
   const [collapsed, setCollapsed]       = useState(false)
@@ -176,11 +178,13 @@ export default function DashboardLayout({ children }) {
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: collapsed ? '10px' : '12px', borderRadius: 10, marginTop: 6, background: 'rgba(232,238,255,0.03)', border: '1px solid var(--border)', cursor: 'pointer', justifyContent: collapsed ? 'center' : 'flex-start' }}>
-              <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, var(--nebula-purple), var(--nebula-pink))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-display)', flexShrink: 0 }}>DS</div>
+              <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, var(--nebula-purple), var(--nebula-pink))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-display)', flexShrink: 0 }}>
+                {session?.user?.name?.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase() || 'DS'}
+              </div>
               {!collapsed && (
                 <div style={{ overflow: 'hidden' }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Dalton Stone</div>
-                  <div style={{ fontSize: 10, color: 'var(--dim)' }}>Nebula Plan</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session?.user?.name || 'Account'}</div>
+                  <div style={{ fontSize: 10, color: 'var(--dim)' }}>{businesses.length} active location{businesses.length !== 1 ? 's' : ''}</div>
                 </div>
               )}
             </div>
