@@ -62,12 +62,22 @@ export default function Pricing() {
       <Starfield />
       <Navbar />
       <style>{`
+        html, body { overflow-x: hidden; }
         .faq-item { transition: border-color 0.2s; cursor: pointer; }
         .faq-item:hover { border-color: rgba(123,47,255,0.3) !important; }
+        @media(max-width:768px){
+          .pricing-hero { padding: 120px 20px 60px !important; }
+          .pricing-card { padding: 32px 20px !important; }
+          .pricing-card-features { grid-template-columns: 1fr !important; }
+          .pricing-feature-grid { grid-template-columns: 1fr !important; }
+          .pricing-section { padding: 60px 20px !important; }
+          .pricing-compare-links { flex-direction: column; align-items: flex-start; }
+          .pricing-faq-section { padding: 0 20px 80px !important; }
+        }
       `}</style>
 
       {/* Hero */}
-      <section style={{ padding: '160px 60px 80px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+      <section className="pricing-hero" style={{ padding: '160px 60px 80px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 700, margin: '0 auto' }}>
           <div style={{ fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: 'var(--nebula-purple)', marginBottom: 16 }}>Pricing</div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(32px, 5vw, 60px)', fontWeight: 900, lineHeight: 1.05, marginBottom: 20 }}>
@@ -78,7 +88,7 @@ export default function Pricing() {
           </p>
 
           {/* Main pricing card */}
-          <div style={{ padding: '52px', borderRadius: 24, background: 'linear-gradient(135deg, rgba(123,47,255,0.12), rgba(0,200,255,0.06))', border: '1px solid rgba(123,47,255,0.35)', position: 'relative', overflow: 'hidden', marginBottom: 16, boxShadow: '0 0 80px rgba(123,47,255,0.12)' }}>
+          <div className="pricing-card" style={{ padding: '52px', borderRadius: 24, background: 'linear-gradient(135deg, rgba(123,47,255,0.12), rgba(0,200,255,0.06))', border: '1px solid rgba(123,47,255,0.35)', position: 'relative', overflow: 'hidden', marginBottom: 16, boxShadow: '0 0 80px rgba(123,47,255,0.12)' }}>
             <div style={{ position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)', padding: '5px 20px', borderRadius: '0 0 12px 12px', background: 'linear-gradient(135deg, var(--nebula-purple), var(--nebula-pink))', fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase' }}>
               Start with $1 Trial
             </div>
@@ -86,7 +96,7 @@ export default function Pricing() {
               $79
             </div>
             <div style={{ fontSize: 15, color: 'var(--dim)', marginBottom: 40 }}>per location · per month · cancel anytime</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, textAlign: 'left', marginBottom: 44 }}>
+            <div className="pricing-card-features" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, textAlign: 'left', marginBottom: 44 }}>
               {[
                 '✓  Monthly rank audits + heatmaps',
                 '✓  10 AI GBP posts per month',
@@ -114,13 +124,13 @@ export default function Pricing() {
       </section>
 
       {/* Full feature breakdown */}
-      <section style={{ padding: '80px 60px', position: 'relative', zIndex: 1 }}>
+      <section className="pricing-section" style={{ padding: '80px 60px', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 60 }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(24px, 3.5vw, 38px)', fontWeight: 900, marginBottom: 12 }}>Everything included</h2>
             <p style={{ fontSize: 15, color: 'var(--dim)', lineHeight: 1.7 }}>No add-ons. No feature gates. Every location gets the full platform.</p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+          <div className="pricing-feature-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
             {features.map((cat, i) => (
               <div key={i} style={{ padding: '28px', borderRadius: 16, background: 'rgba(232,238,255,0.02)', border: '1px solid var(--border)' }}>
                 <div style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--nebula-blue)', marginBottom: 16, fontWeight: 600 }}>{cat.category}</div>
@@ -155,7 +165,7 @@ export default function Pricing() {
       </section>
 
       {/* FAQs */}
-      <section style={{ padding: '0 60px 120px', position: 'relative', zIndex: 1 }}>
+      <section className="pricing-faq-section" style={{ padding: '0 60px 120px', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 56 }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(24px, 3.5vw, 36px)', fontWeight: 900, marginBottom: 10 }}>Pricing FAQs</h2>
