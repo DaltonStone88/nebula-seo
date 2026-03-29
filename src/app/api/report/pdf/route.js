@@ -45,10 +45,15 @@ export async function GET(req) {
       const baseUrl = process.env.NEXTAUTH_URL || 'https://www.nebulaseo.com'
       const domain = new URL(baseUrl).hostname
       const cookies = cookieHeader.split(';').flatMap(c => {
-        const [name, ...rest] = c.trim().split('=')
-        const value = rest.join('=')
+        const trimmed = c.trim()
+        const eqIdx = trimmed.indexOf('=')
+        if (eqIdx === -1) return []
+        const name = trimmed.slice(0, eqIdx).trim()
+        const value = trimmed.slice(eqIdx + 1).trim()
         if (!name || !value) return []
-        return [{ name: name.trim(), value, domain }]
+        // Only include session-related cookies
+        if (!name.startsWith('next-auth') && !name.startsWith('__Secure') && !name.startsWith('__Host')) return []
+        return [{ name, value, domain, path: '/' }]
       })
       if (cookies.length) await page.setCookie(...cookies)
     }
