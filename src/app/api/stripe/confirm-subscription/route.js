@@ -22,11 +22,19 @@ export async function POST(req) {
       invoice_settings: { default_payment_method: paymentMethodId },
     })
 
-    // Create the subscription
+    // Create the subscription with $1 trial (3 days)
     const subscription = await stripe.subscriptions.create({
       customer: user.stripeCustomerId,
       items: [{ price: process.env.STRIPE_PRICE_ID }],
       default_payment_method: paymentMethodId,
+      trial_end: Math.floor(Date.now() / 1000) + (3 * 24 * 60 * 60), // 3 days from now
+      add_invoice_items: [{
+        price_data: {
+          currency: 'usd',
+          product: process.env.STRIPE_PRODUCT_ID,
+          unit_amount: 100, // $1.00
+        },
+      }],
       metadata: {
         userId: session.user.id,
         businessData: JSON.stringify(businessData),
