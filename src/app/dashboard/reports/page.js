@@ -136,7 +136,7 @@ function ReportsContent() {
       // Open report in hidden iframe to render it
       const iframe = document.createElement('iframe')
       iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:900px;height:100vh;border:none;'
-      iframe.src = `/dashboard/report/${auditId}`
+      iframe.src = `/report/${auditId}`
       document.body.appendChild(iframe)
       
       await new Promise(resolve => iframe.onload = () => setTimeout(resolve, 3000))
@@ -178,7 +178,7 @@ function ReportsContent() {
     } catch (e) { 
       console.error('PDF error:', e)
       // Fallback: open report page for printing
-      window.open(`/dashboard/report/${auditId}`, '_blank')
+      window.open(`/report/${auditId}`, '_blank')
     }
     setDownloading(null)
   }
