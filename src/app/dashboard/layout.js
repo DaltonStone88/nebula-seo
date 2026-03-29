@@ -38,6 +38,7 @@ export default function DashboardLayout({ children }) {
           setSelectedBiz(data[0])
         }
       })
+      .catch(e => console.error('Layout: failed to load businesses', e))
   }, [])
 
   // Close dropdown on outside click
