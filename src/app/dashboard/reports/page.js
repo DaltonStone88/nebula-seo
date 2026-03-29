@@ -536,44 +536,32 @@ function ReportsContent() {
                           </div>
                         </div>
 
-                        {/* Content: stats left, heatmap right */}
-                        <div style={{ display: 'flex', gap: 0 }}>
-                          {/* Stats panel */}
-                          <div style={{ width: 200, flexShrink: 0, padding: '24px 20px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 20 }}>
-                            <div>
-                              <div style={{ fontSize: 10, color: 'var(--dim)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Avg Ranking</div>
-                              <div style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 900, color: 'var(--nebula-blue)', lineHeight: 1 }}>{latest ? latest.avgRank : '—'}</div>
-                            </div>
-                            <div>
-                              <div style={{ fontSize: 10, color: 'var(--dim)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Top 3</div>
-                              <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 900, color: 'var(--nebula-purple)', lineHeight: 1 }}>{latest ? `${latest.top3Percent}%` : '—'}</div>
-                            </div>
-                            {baseline && latest && baseline.id !== latest.id && (
-                              <div>
-                                <div style={{ fontSize: 10, color: 'var(--dim)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Baseline</div>
-                                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--dim)' }}>{baseline.avgRank}</div>
-                              </div>
-                            )}
-                            {latest && (
-                              <div>
-                                <div style={{ fontSize: 10, color: 'var(--dim)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Last Run</div>
-                                <div style={{ fontSize: 12, color: 'var(--dim)' }}>{new Date(latest.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                              </div>
-                            )}
-                            {!latest && (
-                              <div style={{ fontSize: 12, color: 'var(--dim)' }}>No audit data yet. Your first audit runs automatically.</div>
-                            )}
-                          </div>
+                        {/* Content: two heatmaps side by side */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 320 }}>
 
-                          {/* Heatmap */}
-                          <div style={{ flex: 1, position: 'relative', minHeight: 280 }}>
+                          {/* LEFT: Latest audit heatmap */}
+                          <div style={{ position: 'relative', borderRight: '1px solid var(--border)' }}>
+                            {/* Label */}
+                            <div style={{ position: 'absolute', top: 10, left: 12, zIndex: 3, background: 'rgba(6,6,18,0.85)', backdropFilter: 'blur(4px)', borderRadius: 8, padding: '5px 10px', display: 'flex', gap: 16, alignItems: 'center' }}>
+                              <div>
+                                <div style={{ fontSize: 9, color: 'var(--dim)', textTransform: 'uppercase', letterSpacing: 1 }}>{latest ? new Date(latest.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No data'}</div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--star-white)' }}>Latest Audit</div>
+                              </div>
+                              {latest && <>
+                                <div style={{ textAlign: 'right' }}>
+                                  <div style={{ fontSize: 9, color: 'var(--dim)' }}>Avg Rank</div>
+                                  <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--nebula-blue)' }}>{latest.avgRank}</div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                  <div style={{ fontSize: 9, color: 'var(--dim)' }}>Top 3</div>
+                                  <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--nebula-purple)' }}>{latest.top3Percent}%</div>
+                                </div>
+                              </>}
+                            </div>
                             {latest ? (
                               <>
-                                <img
-                                  src={`https://maps.googleapis.com/maps/api/staticmap?center=${selectedBiz.lat},${selectedBiz.lng}&zoom=${zoom}&size=${mapW}x${mapH}&scale=2&style=feature:all|element:labels.text.fill|color:0x888888&style=feature:road|color:0x2a2a3a&style=feature:water|color:0x0a0a2f&style=feature:landscape|color:0x1a1a2e&style=feature:poi|visibility:off&key=${apiKey}`}
-                                  alt="map"
-                                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-                                />
+                                <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${selectedBiz.lat},${selectedBiz.lng}&zoom=${zoom}&size=${mapW}x${mapH}&scale=2&style=feature:all|element:labels.text.fill|color:0x888888&style=feature:road|color:0x2a2a3a&style=feature:water|color:0x0a0a2f&style=feature:landscape|color:0x1a1a2e&style=feature:poi|visibility:off&key=${apiKey}`}
+                                  alt="map" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                                 <div style={{ position: 'absolute', inset: 0 }}>
                                   {gridData.map((cell, ci) => {
                                     const scale = Math.pow(2, zoom)
@@ -593,14 +581,45 @@ function ReportsContent() {
                                 </div>
                               </>
                             ) : (
-                              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(6,6,18,0.4)' }}>
+                              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(6,6,18,0.6)' }}>
                                 <div style={{ textAlign: 'center', color: 'var(--dim)' }}>
                                   <div style={{ fontSize: 28, marginBottom: 8 }}>📊</div>
-                                  <div style={{ fontSize: 13 }}>Audit pending</div>
+                                  <div style={{ fontSize: 13 }}>First audit pending</div>
                                 </div>
                               </div>
                             )}
                           </div>
+
+                          {/* RIGHT: Next audit card — same map blurred + dark overlay + countdown */}
+                          <div style={{ position: 'relative' }}>
+                            {/* Same map blurred behind */}
+                            <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${selectedBiz.lat},${selectedBiz.lng}&zoom=${zoom}&size=${mapW}x${mapH}&scale=2&style=feature:all|element:labels.text.fill|color:0x888888&style=feature:road|color:0x2a2a3a&style=feature:water|color:0x0a0a2f&style=feature:landscape|color:0x1a1a2e&style=feature:poi|visibility:off&key=${apiKey}`}
+                              alt="map" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(3px)', transform: 'scale(1.05)' }} />
+                            {/* Dark overlay */}
+                            <div style={{ position: 'absolute', inset: 0, background: 'rgba(6,6,18,0.75)', backdropFilter: 'blur(2px)' }} />
+                            {/* Content centered */}
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }}>
+                              <div style={{ fontSize: 36 }}>🔄</div>
+                              <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 900, color: '#fff', textAlign: 'center' }}>Next Audit</div>
+                              {nextDate ? (
+                                <>
+                                  <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 48, fontWeight: 900, color: 'var(--nebula-blue)', lineHeight: 1 }}>{daysLeft}</div>
+                                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>day{daysLeft !== 1 ? 's' : ''} remaining</div>
+                                  </div>
+                                  <div style={{ width: '80%', height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', borderRadius: 3, width: `${pct}%`, background: 'linear-gradient(90deg, var(--nebula-purple), var(--nebula-blue))' }} />
+                                  </div>
+                                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
+                                    Scheduled for {nextDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                                  </div>
+                                </>
+                              ) : (
+                                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>Your first audit will generate<br/>your baseline report</div>
+                              )}
+                            </div>
+                          </div>
+
                         </div>
                       </div>
                     )
