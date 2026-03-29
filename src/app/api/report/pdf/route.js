@@ -32,7 +32,7 @@ export async function GET(req) {
 
     const browser = await puppeteer.launch({
       args: chromium.args,
-      defaultViewport: { width: 1200, height: 900 },
+      defaultViewport: { width: 794, height: 1123, deviceScaleFactor: 1 },
       executablePath: await chromium.executablePath(CHROMIUM_REMOTE_URL),
       headless: true,
     })
