@@ -126,77 +126,12 @@ function ReportsContent() {
   const [baselineFull, setBaselineFull] = useState(null)
   const [latestFull, setLatestFull] = useState(null)
 
-  const downloadReport = async (auditId) => {
-    try {
-      const { default: jsPDF } = await import('jspdf')
-      const { default: html2canvas } = await import('html2canvas')
-
-      // Load report in hidden iframe
-      const iframe = document.createElement('iframe')
-      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:794px;height:2000px;border:none;overflow:hidden;background:white;'
-      iframe.src = `/report/${auditId}`
-      document.body.appendChild(iframe)
-
-      // Wait for full render including map tiles
-      await new Promise(resolve => iframe.onload = () => setTimeout(resolve, 4000))
-
-      const iframeDoc = iframe.contentDocument
-      // Inject CSS to remove all margins/padding for full-bleed capture
-      const style = iframeDoc.createElement('style')
-      style.textContent = `
-        * { box-sizing: border-box !important; }
-        body { margin: 0 !important; padding: 0 !important; width: 794px !important; overflow: hidden !important; }
-        body > div { width: 794px !important; margin: 0 !important; }
-        body > div > div { width: 794px !important; }
-      `
-      iframeDoc.head.appendChild(style)
-      await new Promise(r => setTimeout(r, 500))
-
-      const reportEl = iframeDoc.body.firstChild
-      if (!reportEl) throw new Error('Report element not found')
-
-      // Find all page sections — they are direct children of the report wrapper
-      const sections = Array.from(reportEl.children)
-      if (sections.length === 0) throw new Error('No sections found')
-
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-      const pageW = 210
-      const pageH = 297
-
-      for (let i = 0; i < sections.length; i++) {
-        const section = sections[i]
-        if (i > 0) doc.addPage()
-
-        const canvas = await html2canvas(section, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: null,
-          width: 960,
-          windowWidth: 960,
-          logging: false,
-        })
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.95)
-        // Always fill full A4 width
-        const imgW = pageW  // 210mm — full width, no margins
-        const imgH = (canvas.height / canvas.width) * pageW
-
-        if (imgH > pageH) {
-          // Scale down to fit page height if too tall
-          const scale = pageH / imgH
-          doc.addImage(imgData, 'JPEG', 0, 0, imgW * scale, pageH)
-        } else {
-          // Pin to top of page, fill full width
-          doc.addImage(imgData, 'JPEG', 0, 0, imgW, imgH)
-        }
-      }
-
-      document.body.removeChild(iframe)
-      doc.save(`seo-report-${new Date().toISOString().split('T')[0]}.pdf`)
-    } catch (e) {
-      console.error('PDF error:', e)
-      window.open(`/report/${auditId}`, '_blank')
+  const downloadReport = (auditId) => {
+    const win = window.open(`/report/${auditId}?print=1`, '_blank')
+    if (win) {
+      win.addEventListener('load', () => {
+        setTimeout(() => win.print(), 3000)
+      })
     }
   }
 
