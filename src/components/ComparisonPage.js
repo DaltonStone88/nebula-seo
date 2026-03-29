@@ -4,7 +4,7 @@ import Navbar from './Navbar'
 import Starfield from './Starfield'
 import Footer from './Footer'
 
-export default function ComparisonPage({ competitor, tagline, intro, rows, verdict, ourWins, theirWins }) {
+export default function ComparisonPage({ competitor = '', tagline = '', intro = '', rows = [], verdict = '', ourWins = [], theirWins = [] }) {
   return (
     <>
       <Starfield />
