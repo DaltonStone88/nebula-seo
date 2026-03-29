@@ -25,8 +25,8 @@ function EditModal({ biz, onClose, onSaved }) {
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
-  const [warnings, setWarnings] = useState([]) // per-keyword warnings
-  const [confirmed, setConfirmed] = useState({}) // which warnings user confirmed
+  const [confirmed, setConfirmed] = useState({})
+  const [auditProgress, setAuditProgress] = useState(null) // null = not running, array = running
 
   const inputStyle = {
     width: '100%', padding: '12px 16px', borderRadius: 10,
@@ -86,9 +86,13 @@ function EditModal({ biz, onClose, onSaved }) {
 
     onSaved(data.business)
 
-    // Auto-run audits for newly added keywords then redirect
     if (data.needsAudit && data.addedKeywords?.length > 0) {
-      for (const { keyword } of data.addedKeywords) {
+      // Show audit progress screen
+      const kwsToAudit = data.addedKeywords.map(a => a.keyword)
+      setAuditProgress(kwsToAudit.map(kw => ({ keyword: kw, done: false, error: false })))
+
+      for (let i = 0; i < kwsToAudit.length; i++) {
+        const keyword = kwsToAudit[i]
         try {
           await fetch('/api/places/rank-audit', {
             method: 'POST',
@@ -100,10 +104,13 @@ function EditModal({ biz, onClose, onSaved }) {
               spacing: data.business.gridSpacing || 'medium',
             }),
           })
-        } catch (e) { console.error('Audit failed for', keyword, e) }
+          setAuditProgress(prev => prev.map((p, j) => j === i ? { ...p, done: true } : p))
+        } catch (e) {
+          setAuditProgress(prev => prev.map((p, j) => j === i ? { ...p, done: true, error: true } : p))
+        }
       }
       router.push('/dashboard/reports')
-    } else if (!data.needsAudit) {
+    } else {
       onClose()
     }
   }
@@ -111,6 +118,43 @@ function EditModal({ biz, onClose, onSaved }) {
   const changedCount = keywords.filter((_, i) => getKeywordState(i) === 'changed').length
   const addedCount   = keywords.filter((_, i) => getKeywordState(i) === 'new').length
   const allChangesConfirmed = keywords.every((_, i) => getKeywordState(i) !== 'changed' || confirmed[i])
+
+  // Show full-screen audit progress overlay when running
+  if (auditProgress) {
+    const allDone = auditProgress.every(p => p.done)
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', maxWidth: 460, width: '100%', padding: '0 24px' }}>
+          <div style={{ fontSize: 48, marginBottom: 24 }}>🔍</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
+            {allDone ? 'Audits Complete!' : 'Running Rank Audits'}
+          </div>
+          <p style={{ fontSize: 14, color: 'var(--dim)', marginBottom: 40, lineHeight: 1.6 }}>
+            {allDone ? 'Redirecting to your reports...' : 'Scanning your ranking across the service area. Hang tight.'}
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {auditProgress.map((p, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', borderRadius: 14, background: 'rgba(232,238,255,0.03)', border: `1px solid ${p.done ? (p.error ? 'rgba(255,80,80,0.3)' : 'rgba(20,200,100,0.3)') : 'rgba(123,47,255,0.3)'}` }}>
+                <div style={{ width: 28, height: 28, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {p.done
+                    ? <span style={{ fontSize: 18 }}>{p.error ? '❌' : '✅'}</span>
+                    : <div style={{ width: 20, height: 20, border: '2px solid rgba(123,47,255,0.3)', borderTopColor: 'var(--nebula-purple)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                  }
+                </div>
+                <div style={{ flex: 1, textAlign: 'left' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{p.keyword}</div>
+                  <div style={{ fontSize: 11, color: 'var(--dim)', marginTop: 2 }}>
+                    {p.done ? (p.error ? 'Failed — retry from Reports' : 'Audit complete') : 'Scanning ranking grid...'}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px 20px', overflowY: 'auto' }}
