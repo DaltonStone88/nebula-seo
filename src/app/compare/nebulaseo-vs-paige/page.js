@@ -41,6 +41,7 @@ export default function Page() {
         'White-label dashboard already available',
         'Longer track record and larger user base',
       ]}
+      rows={rows}
       verdict="If you're an agency or business owner who wants control over what gets published to your Google Business Profile, NebulaSEO's approval queue and visual heatmaps give you more visibility than Paige's fully automated approach. You also save $20/month per location — $240/year per location — with the same core GBP optimization features. Paige is the better choice if you want full automation including social media and don't need to approve content before it publishes."
     />
   )
