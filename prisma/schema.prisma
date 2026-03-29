@@ -113,6 +113,13 @@ model Business {
   // Status
   status      BusinessStatus @default(ACTIVE)
 
+  // Billing (per-location subscription)
+  stripeSubscriptionId  String?
+  stripeCurrentPeriodEnd DateTime?
+  cancelAtPeriodEnd     Boolean  @default(false)
+  discountUsed          Boolean  @default(false)  // one-time 10% off offer
+  pauseUsed             Boolean  @default(false)  // one-time 30-day pause offer
+
   // Relations
   userId      String
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
