@@ -511,7 +511,7 @@ function ReportsContent() {
                     const gridData = latest ? (Array.isArray(latest.gridData) ? latest.gridData : []) : []
 
                     return (
-                      <div key={i} style={{ borderRadius: 16, border: '1px solid var(--border)', background: 'rgba(232,238,255,0.02)', marginBottom: 20, overflow: 'hidden' }}>
+                      <div key={i} style={{ borderRadius: 16, border: '1px solid var(--border)', background: 'rgba(232,238,255,0.02)', marginBottom: 28, overflow: 'hidden' }}>
                         {/* Header row */}
                         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(6,6,18,0.4)' }}>
                           <div>
@@ -591,11 +591,14 @@ function ReportsContent() {
                               </div>
                             )
                           }
-                          const hasMultiple = latest && baseline && latest.id !== baseline.id
+                          // Show latest on right if there are 2+ audits total, even if same keyword
+                          const hasMultiple = kwAudits.length >= 2
+                          const rightAudit = hasMultiple ? latest : null
+                          const rightLabel = hasMultiple ? 'Latest Audit' : 'Next Audit'
                           return (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, margin: '0' }}>
                               <div style={{ borderRight: '1px solid var(--border)' }}>{renderMap(baseline || latest, 'Baseline Audit')}</div>
-                              <div>{renderMap(hasMultiple ? latest : null, hasMultiple ? 'Latest Audit' : 'Next Audit')}</div>
+                              <div>{renderMap(rightAudit, rightLabel)}</div>
                             </div>
                           )
                         })()}
