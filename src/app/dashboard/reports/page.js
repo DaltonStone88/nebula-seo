@@ -14,6 +14,20 @@ function getRankColor(rank) {
   return RANK_COLORS[rank] || '#b01414'
 }
 
+function latLngToPixel(lat, lng, centerLat, centerLng, zoom, mapW, mapH) {
+  // Convert lat/lng offset to pixel offset using Mercator projection
+  const scale = Math.pow(2, zoom)
+  const worldSize = 256 * scale
+  const x = (lng - centerLng) / 360 * worldSize
+  const latRad = lat * Math.PI / 180
+  const centerLatRad = centerLat * Math.PI / 180
+  const y = -(Math.log(Math.tan(Math.PI/4 + latRad/2)) - Math.log(Math.tan(Math.PI/4 + centerLatRad/2))) / (2 * Math.PI) * worldSize
+  return {
+    px: mapW / 2 + x,
+    py: mapH / 2 + y,
+  }
+}
+
 function HeatmapGrid({ audit, title, subtitle, business }) {
   if (!audit) return (
     <div style={{ flex: 1, borderRadius: 16, border: '1px solid var(--border)', background: 'rgba(232,238,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 480 }}>
@@ -31,6 +45,10 @@ function HeatmapGrid({ audit, title, subtitle, business }) {
   const centerLng = business?.lng || 0
   const zoom = cols <= 5 ? 14 : cols <= 7 ? 13 : cols <= 10 ? 12 : cols <= 15 ? 11 : 10
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+  const mapW = 640
+  const mapH = 512
+  const circleSize = cols <= 7 ? 28 : cols <= 10 ? 22 : cols <= 15 ? 16 : 12
+  const fontSize = cols <= 7 ? 9 : cols <= 10 ? 8 : cols <= 15 ? 7 : 6
 
   return (
     <div style={{ flex: 1, borderRadius: 16, border: '1px solid var(--border)', overflow: 'hidden', background: '#1a1a2e' }}>
@@ -53,34 +71,42 @@ function HeatmapGrid({ audit, title, subtitle, business }) {
 
       <div style={{ position: 'relative', width: '100%', paddingBottom: '80%' }}>
         <img
-          src={`https://maps.googleapis.com/maps/api/staticmap?center=${centerLat},${centerLng}&zoom=${zoom}&size=640x512&scale=2&style=feature:all|element:labels.text.fill|color:0x888888&style=feature:road|color:0x2a2a3a&style=feature:road|element:labels|visibility:simplified&style=feature:water|color:0x0a0a2f&style=feature:landscape|color:0x1a1a2e&style=feature:poi|visibility:off&style=feature:transit|visibility:off&key=${apiKey}`}
-          alt="map background"
+          src={`https://maps.googleapis.com/maps/api/staticmap?center=${centerLat},${centerLng}&zoom=${zoom}&size=${mapW}x${mapH}&scale=2&style=feature:all|element:labels.text.fill|color:0x888888&style=feature:road|color:0x2a2a3a&style=feature:road|element:labels|visibility:simplified&style=feature:water|color:0x0a0a2f&style=feature:landscape|color:0x1a1a2e&style=feature:poi|visibility:off&style=feature:transit|visibility:off&key=${apiKey}`}
+          alt="map"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
         />
-        <div style={{
-          position: 'absolute', inset: '6px',
-          display: 'grid',
-          gridTemplateColumns: `repeat(${cols}, 1fr)`,
-          gap: cols > 15 ? 1 : cols > 10 ? 2 : 2,
-        }}>
-          {gridData.map((cell, i) => (
-            <div key={i} title={`Rank: ${cell.rank}`} style={{
-              borderRadius: cols > 15 ? 2 : 3,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: cols > 15 ? 6 : cols > 10 ? 7 : 8,
-              fontWeight: 800, fontFamily: 'var(--font-display)',
-              background: getRankColor(cell.rank) + 'cc',
-              color: '#fff',
-              textShadow: '0 1px 3px rgba(0,0,0,0.9)',
-              transition: 'transform 0.15s',
-              cursor: 'default',
-              border: '1px solid rgba(255,255,255,0.12)',
-              position: 'relative',
-            }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.4)'; e.currentTarget.style.zIndex = '10'; e.currentTarget.style.background = getRankColor(cell.rank) }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.zIndex = '1'; e.currentTarget.style.background = getRankColor(cell.rank) + 'cc' }}
-            >{cell.rank}</div>
-          ))}
+        {/* Circles positioned by lat/lng converted to pixel coords */}
+        <div style={{ position: 'absolute', inset: 0 }}>
+          {gridData.map((cell, i) => {
+            const { px, py } = latLngToPixel(cell.lat, cell.lng, centerLat, centerLng, zoom, mapW, mapH)
+            const pct_x = (px / mapW) * 100
+            const pct_y = (py / mapH) * 100
+            if (pct_x < 0 || pct_x > 100 || pct_y < 0 || pct_y > 100) return null
+            return (
+              <div key={i} title={`Rank: ${cell.rank}`} style={{
+                position: 'absolute',
+                left: `${pct_x}%`,
+                top: `${pct_y}%`,
+                transform: 'translate(-50%, -50%)',
+                width: circleSize,
+                height: circleSize,
+                borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize,
+                fontWeight: 800, fontFamily: 'var(--font-display)',
+                background: getRankColor(cell.rank),
+                color: '#fff',
+                textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
+                cursor: 'default',
+                transition: 'transform 0.15s',
+                zIndex: 1,
+              }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-50%,-50%) scale(1.5)'; e.currentTarget.style.zIndex = '10' }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translate(-50%,-50%) scale(1)'; e.currentTarget.style.zIndex = '1' }}
+              >{cell.rank}</div>
+            )
+          })}
         </div>
       </div>
     </div>
