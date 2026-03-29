@@ -4,8 +4,18 @@ import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
 export async function GET(req) {
-  const session = await getServerSession(authOptions)
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { searchParams } = new URL(req.url)
+  const secret = searchParams.get('secret')
+  
+  // Allow access via secret param (used by PDF generator) or session
+  const validSecret = secret && secret === process.env.NEXTAUTH_SECRET
+  
+  if (!validSecret) {
+    const session = await getServerSession(authOptions)
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  
+  const session = validSecret ? null : await getServerSession(authOptions)
 
   const { searchParams } = new URL(req.url)
   const auditId = searchParams.get('auditId')
@@ -13,7 +23,7 @@ export async function GET(req) {
 
   // Get the audit
   const audit = await prisma.rankAudit.findFirst({
-    where: { id: auditId, business: { userId: session.user.id } },
+    where: { id: auditId, ...(session ? { business: { userId: session.user.id } } : {}) },
     include: { business: true },
   })
   if (!audit) return NextResponse.json({ error: 'Audit not found' }, { status: 404 })
