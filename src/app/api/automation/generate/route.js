@@ -75,103 +75,147 @@ function distributePostTypes(hasOffers, hasEvents, count = 10) {
   return types.sort(() => Math.random() - 0.5)
 }
 
-async function generatePost({ type, business, keyword, city, offer, event, update }) {
-  const businessContext = `
-Business Name: ${business.name}
+async function generatePost({ type, business, keyword, city, offer, event, update, postIndex }) {
+  const allKeywords = (business.targetKeywords || []).join(', ')
+  const allCities = (business.targetCities || []).join(', ')
+
+  const angles = [
+    'Focus on the problem the customer is experiencing and how this business solves it.',
+    'Focus on what makes this business different from competitors in the area.',
+    'Focus on the speed and convenience of the service.',
+    'Focus on the long-term value and peace of mind the service provides.',
+    'Focus on a specific scenario or situation a local customer might be in right now.',
+    'Focus on trust, experience, and reputation in the local community.',
+    'Focus on the process — what happens when a customer reaches out.',
+    'Focus on a seasonal or timely reason why now is the right time.',
+    'Open with a question the target customer is probably asking themselves.',
+    'Open with a relatable local situation, then introduce the business as the solution.',
+  ]
+  const angle = angles[postIndex % angles.length]
+
+  const baseContext = `Business: ${business.name}
 Category: ${business.category || 'local business'}
-Location: ${business.address || ''}
-Target Keywords: ${(business.targetKeywords || []).join(', ')}
-Target Cities: ${(business.targetCities || []).join(', ')}
-Website: ${business.website || ''}
-`
+Address: ${business.address || ''}
+All target keywords: ${allKeywords}
+All target cities: ${allCities}
+Website: ${business.website || ''}`
+
+  const exampleStyle = `Study these two high-quality GBP posts and match their style exactly:
+
+EXAMPLE 1: "Animals can get into attics, crawl spaces, and sheds fast, and the mess can grow even faster. Advanced Wildlife Control LLC is a local animal control service that helps homeowners and businesses in Sullivan, Rolla, Washington, Cuba, and Union, MO handle the problem the right way. We provide wildlife removal and animal removal service for common Missouri critters, and we focus on safe, humane results. If you have been searching for raccoon removal near me, bat removal near me, or squirrel removal, we can inspect the entry points and help stop repeat issues. We also handle skunk removal when odors and digging become a problem. Reach out today to schedule an inspection and get a plan that fits your property."
+
+EXAMPLE 2: "Unwanted wildlife around your home or business can turn into damage fast. Advanced Wildlife Control LLC is a local animal control service that helps property owners in and around Sullivan, Rolla, Washington, Cuba, and Union with safe, humane wildlife removal. If you have been searching for raccoon removal near me, bat removal near me, or squirrel removal, we can inspect the problem, remove the animals, and help block entry points to keep them from coming back. We also handle skunk removal when odor or digging becomes an issue. Reach out today to schedule an inspection and get the problem handled."
+
+Notice how these examples:
+- Open with the customer problem or situation, never the business name
+- Mention the business name naturally in the middle
+- Use natural search-style phrasing like "searching for X near me"
+- List multiple related services and multiple cities naturally
+- End with a simple direct CTA
+- Sound like a real person, not a marketing bot`
 
   let prompt = ''
 
   if (type === 'WHATS_NEW') {
-    const updateContext = update ? `\nRecent Update to highlight: "${update.title ? update.title + ': ' : ''}${update.content}"` : ''
-    prompt = `You are an expert local SEO copywriter. Write a Google Business Profile "What's New" post for the following business.
+    const updateContext = update
+      ? `Specific update to highlight: "${update.title ? update.title + ' — ' : ''}${update.content}"`
+      : ''
 
-${businessContext}
-Focus keyword for this post: "${keyword}"
-Target city for this post: "${city}"
-${updateContext}
+    prompt = `You are an expert local SEO copywriter specializing in Google Business Profile posts.
+
+${baseContext}
+
+${exampleStyle}
+
+Now write a unique "What's New" GBP post for ${business.name} following this exact style.
+
+This post must use this specific angle: ${angle}
+Focus keyword: "${keyword}"
+Target city: "${city}"
+${updateContext ? 'Context to work in: ' + updateContext : ''}
 
 Requirements:
 - 150-300 words
-- Naturally include the keyword "${keyword}" and mention "${city}" or the service area
-- Sound authentic, helpful, and local — NOT spammy
-- Include a clear call to action at the end (call us, visit us, book today, etc.)
-- Do NOT include phone numbers
-- Do NOT use hashtags
-- Do NOT use generic filler phrases like "we are excited to announce"
-- Make it specific to the business category and services
-- Write in second person where appropriate ("your home", "your business")
+- Open with the customer problem or situation — never start with the business name
+- Mention "${keyword}" and "${city}" naturally
+- Mention other related services
+- Reference other target cities (${allCities}) where natural
+- Business name appears naturally in the middle
+- End with a simple CTA
+- NO phone numbers, NO hashtags, NO "we are excited/proud to announce"
+- Must sound completely different from a generic template
 
 Return ONLY the post text, nothing else.`
 
   } else if (type === 'OFFER') {
-    const offerContext = offer ? `
-Offer Details:
-- Title: ${offer.title}
-- Description: ${offer.description || ''}
-- Coupon Code: ${offer.couponCode || 'N/A'}
-- Terms: ${offer.terms || 'Contact us for details'}
-` : ''
+    const offerContext = offer
+      ? `Offer: ${offer.title}${offer.description ? ' — ' + offer.description : ''}${offer.couponCode ? ' | Code: ' + offer.couponCode : ''}${offer.terms ? ' | Terms: ' + offer.terms : ''}`
+      : `Create a realistic offer for a ${business.category || 'local service'} business such as a free estimate, seasonal discount, or first-time customer deal.`
 
-    prompt = `You are an expert local SEO copywriter. Write a Google Business Profile "Offer" post for the following business.
+    prompt = `You are an expert local SEO copywriter specializing in Google Business Profile posts.
 
-${businessContext}
-Focus keyword for this post: "${keyword}"
-Target city for this post: "${city}"
+${baseContext}
+
+${exampleStyle}
+
+Write a unique "Offer" GBP post for ${business.name} following this exact style.
+
+This post must use this specific angle: ${angle}
+Focus keyword: "${keyword}"
+Target city: "${city}"
 ${offerContext}
 
 Requirements:
-- 100-200 words
-- Naturally include the keyword "${keyword}" and mention "${city}"  
-- Create urgency without being pushy
-- Clearly state the offer value
-- Include a call to action
-- Do NOT include phone numbers
-- Do NOT use hashtags
-- If no offer details provided, create a compelling generic service offer appropriate for this business type
+- 150-250 words
+- Open with the customer's problem or need, not the offer
+- Present the offer clearly with natural urgency
+- Mention "${keyword}" and "${city}" naturally
+- Reference other target cities where natural
+- Business name appears naturally
+- End with a clear CTA
+- NO phone numbers, NO hashtags
 
 Return ONLY the post text, nothing else.`
 
   } else if (type === 'EVENT') {
-    const eventContext = event ? `
-Event Details:
-- Title: ${event.title}
-- Description: ${event.description || ''}
-- Dates: ${event.startDate ? new Date(event.startDate).toLocaleDateString() : 'upcoming'} - ${event.endDate ? new Date(event.endDate).toLocaleDateString() : ''}
-` : ''
+    const eventContext = event
+      ? `Event: ${event.title}${event.description ? ' — ' + event.description : ''}${event.startDate ? ' | Date: ' + new Date(event.startDate).toLocaleDateString() : ''}${event.endDate ? ' to ' + new Date(event.endDate).toLocaleDateString() : ''}`
+      : `Create a realistic event for a ${business.category || 'local service'} business such as a free inspection day, open house, or community promotion.`
 
-    prompt = `You are an expert local SEO copywriter. Write a Google Business Profile "Event" post for the following business.
+    prompt = `You are an expert local SEO copywriter specializing in Google Business Profile posts.
 
-${businessContext}
-Focus keyword for this post: "${keyword}"
-Target city for this post: "${city}"
+${baseContext}
+
+${exampleStyle}
+
+Write a unique "Event" GBP post for ${business.name} following this exact style.
+
+This post must use this specific angle: ${angle}
+Focus keyword: "${keyword}"
+Target city: "${city}"
 ${eventContext}
 
 Requirements:
-- 100-200 words
-- Naturally include the keyword "${keyword}" and mention "${city}"
-- Build excitement and encourage attendance or participation
-- Include a call to action
-- Do NOT include phone numbers
-- Do NOT use hashtags
-- If no event details provided, create a compelling community engagement event appropriate for this business type
+- 150-250 words
+- Open with why this event matters to the local customer
+- Mention "${keyword}" and "${city}" naturally
+- Reference other target cities where natural
+- Business name appears naturally
+- End with a clear CTA
+- NO phone numbers, NO hashtags
 
 Return ONLY the post text, nothing else.`
   }
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 500,
+    max_tokens: 600,
     messages: [{ role: 'user', content: prompt }],
   })
 
   return message.content[0].text.trim()
 }
+
 
 export async function POST(req) {
   const body = await req.json()
