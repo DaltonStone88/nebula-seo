@@ -38,6 +38,7 @@ export default function Page() {
         'More granular grid audit customization',
         'Larger existing community and integrations',
       ]}
+      rows={rows}
       verdict="LocalViking is a good choice if all you need is rank tracking and you already have a content workflow. NebulaSEO is the better choice if you want rank tracking and AI content generation in one tool without paying for two platforms. For agencies managing multiple locations, NebulaSEO's flat per-location pricing with full features included typically comes out cheaper than combining LocalViking with a separate content tool."
     />
   )
