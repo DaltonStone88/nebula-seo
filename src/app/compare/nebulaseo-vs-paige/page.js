@@ -1,3 +1,4 @@
+'use client'
 import ComparisonPage from '../../../components/ComparisonPage'
 
 export const metadata = {
