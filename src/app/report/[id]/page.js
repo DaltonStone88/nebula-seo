@@ -406,5 +406,6 @@ export default function ReportPage() {
       </div>
 
     </div>
+    </>
   )
 }
