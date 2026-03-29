@@ -7,6 +7,18 @@
   "functions": {
     "src/app/api/report/pdf/route.js": {
       "maxDuration": 60
+    },
+    "src/app/api/automation/generate/route.js": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/automation/route.js": {
+      "maxDuration": 300
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/automation",
+      "schedule": "0 6 1 * *"
+    }
+  ]
 }
