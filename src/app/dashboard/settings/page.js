@@ -1,5 +1,249 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+
+function BillingTab() {
+  const [businesses, setBusinesses] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [cancelling, setCancelling] = useState(null)
+  const [cancelStep, setCancelStep] = useState('reason')
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelStats, setCancelStats] = useState(null)
+  const [cancelLoading, setCancelLoading] = useState(false)
+  const [cancelActionTaken, setCancelActionTaken] = useState(null)
+  const [portalLoading, setPortalLoading] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/businesses')
+      .then(r => r.json())
+      .then(data => { setBusinesses(Array.isArray(data) ? data : []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const openCancel = async (biz) => {
+    setCancelling(biz)
+    setCancelStep('reason')
+    setCancelReason('')
+    setCancelActionTaken(null)
+    const res = await fetch(`/api/stripe/cancel?businessId=${biz.id}`)
+    const data = await res.json()
+    setCancelStats(data)
+  }
+
+  const handleCancelAction = async (action) => {
+    setCancelLoading(true)
+    const res = await fetch('/api/stripe/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ businessId: cancelling.id, action }),
+    })
+    const data = await res.json()
+    setCancelLoading(false)
+    if (data.success) {
+      setCancelActionTaken(action)
+      if (action === 'discount') setCancelStep('offer_accepted')
+      if (action === 'pause') setCancelStep('paused')
+      if (action === 'cancel') {
+        setCancelStep('cancelled')
+        setBusinesses(prev => prev.map(b => b.id === cancelling.id ? { ...b, cancelAtPeriodEnd: true } : b))
+      }
+    }
+  }
+
+  const handleReactivate = async (biz) => {
+    const res = await fetch('/api/stripe/reactivate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ businessId: biz.id }),
+    })
+    if ((await res.json()).success) {
+      setBusinesses(prev => prev.map(b => b.id === biz.id ? { ...b, cancelAtPeriodEnd: false } : b))
+    }
+  }
+
+  const openPortal = async () => {
+    setPortalLoading(true)
+    const res = await fetch('/api/stripe/portal', { method: 'POST' })
+    const data = await res.json()
+    setPortalLoading(false)
+    if (data.url) window.location.href = data.url
+  }
+
+  const accessDate = cancelStats?.currentPeriodEnd
+    ? new Date(cancelStats.currentPeriodEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : 'end of billing period'
+
+  const cancelReasons = ['Too expensive', 'Not seeing results', 'Switching to another tool', 'Business closed or paused', 'Missing a feature I need', 'Other']
+
+  const totalMonthly = businesses.filter(b => !b.cancelAtPeriodEnd).length * 79
+
+  return (
+    <>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, marginBottom: 28 }}>Billing</h2>
+
+      {/* Cancel Modal */}
+      {cancelling && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: 'rgba(10,10,28,0.99)', border: '1px solid var(--border)', borderRadius: 20, padding: '36px', width: '100%', maxWidth: 500 }}>
+            {cancelStep === 'reason' && (
+              <>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Cancel {cancelling.name}?</div>
+                <p style={{ fontSize: 13, color: 'var(--dim)', marginBottom: 20, lineHeight: 1.6 }}>Help us understand why before you go.</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+                  {cancelReasons.map(r => (
+                    <button key={r} onClick={() => setCancelReason(r)} style={{ padding: '11px 16px', borderRadius: 10, border: `1px solid ${cancelReason === r ? 'rgba(123,47,255,0.5)' : 'var(--border)'}`, background: cancelReason === r ? 'rgba(123,47,255,0.1)' : 'transparent', color: cancelReason === r ? 'var(--star-white)' : 'var(--dim)', cursor: 'pointer', textAlign: 'left', fontSize: 13, fontFamily: 'var(--font-body)' }}>{r}</button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => setCancelling(null)} style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--dim)', cursor: 'pointer', fontSize: 13 }}>Keep Subscription</button>
+                  <button onClick={() => cancelReason && setCancelStep('retention')} disabled={!cancelReason} className="btn-primary" style={{ flex: 1, fontSize: 13, padding: '11px', justifyContent: 'center', opacity: cancelReason ? 1 : 0.4 }}>Continue →</button>
+                </div>
+              </>
+            )}
+            {cancelStep === 'retention' && cancelStats && (
+              <>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Here's what you'd be losing</div>
+                <p style={{ fontSize: 13, color: 'var(--dim)', marginBottom: 20 }}>NebulaSEO has been working hard for {cancelling.name}.</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+                  {[
+                    { label: 'Posts Generated', val: cancelStats.postsGenerated, icon: '📝' },
+                    { label: 'Rank Audits Run', val: cancelStats.auditsRun, icon: '📊' },
+                    { label: 'Current Avg Rank', val: cancelStats.avgRank ? `#${cancelStats.avgRank}` : '—', icon: '📍' },
+                    { label: 'Days Active', val: cancelStats.daysActive, icon: '📅' },
+                  ].map((s, i) => (
+                    <div key={i} style={{ padding: '14px', borderRadius: 12, background: 'rgba(123,47,255,0.08)', border: '1px solid rgba(123,47,255,0.2)', textAlign: 'center' }}>
+                      <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 900, color: 'var(--nebula-blue)' }}>{s.val}</div>
+                      <div style={{ fontSize: 11, color: 'var(--dim)', marginTop: 2 }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--dim)', marginBottom: 16, lineHeight: 1.6 }}>Cancelling permanently deletes all ranking history, posts, and data for this location.</p>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => setCancelling(null)} style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1px solid rgba(20,200,100,0.4)', background: 'rgba(20,200,100,0.06)', color: 'rgba(20,200,100,0.9)', cursor: 'pointer', fontSize: 13 }}>Keep Subscription</button>
+                  <button onClick={() => setCancelStep('offer')} style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--dim)', cursor: 'pointer', fontSize: 13 }}>Still cancel →</button>
+                </div>
+              </>
+            )}
+            {cancelStep === 'offer' && (
+              <>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Wait — we have an offer</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+                  {!cancelStats?.discountUsed && (
+                    <div style={{ padding: '18px', borderRadius: 14, background: 'rgba(0,200,255,0.07)', border: '1px solid rgba(0,200,255,0.3)' }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 5 }}>💰 10% Off Next Month</div>
+                      <div style={{ fontSize: 12, color: 'var(--dim)', marginBottom: 12, lineHeight: 1.6 }}>One-time offer — 10% off your next billing cycle, no strings attached.</div>
+                      <button onClick={() => handleCancelAction('discount')} disabled={cancelLoading} className="btn-primary" style={{ fontSize: 12, padding: '8px 18px' }}>{cancelLoading ? '...' : 'Claim 10% Off'}</button>
+                    </div>
+                  )}
+                  {!cancelStats?.pauseUsed && (
+                    <div style={{ padding: '18px', borderRadius: 14, background: 'rgba(123,47,255,0.07)', border: '1px solid rgba(123,47,255,0.3)' }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 5 }}>⏸️ Pause for 30 Days</div>
+                      <div style={{ fontSize: 12, color: 'var(--dim)', marginBottom: 12, lineHeight: 1.6 }}>Keep your data intact. One-time offer per location.</div>
+                      <button onClick={() => handleCancelAction('pause')} disabled={cancelLoading} style={{ padding: '8px 18px', borderRadius: 10, border: '1px solid rgba(123,47,255,0.4)', background: 'rgba(123,47,255,0.1)', color: 'var(--star-white)', cursor: 'pointer', fontSize: 12 }}>{cancelLoading ? '...' : 'Pause Subscription'}</button>
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => setCancelStep('confirm')} style={{ width: '100%', padding: '11px', borderRadius: 10, border: '1px solid rgba(255,50,50,0.3)', background: 'rgba(255,50,50,0.05)', color: 'rgba(255,100,100,0.8)', cursor: 'pointer', fontSize: 13 }}>No thanks, cancel anyway</button>
+              </>
+            )}
+            {cancelStep === 'confirm' && (
+              <>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Final confirmation</div>
+                <p style={{ fontSize: 13, color: 'var(--dim)', marginBottom: 14, lineHeight: 1.6 }}>Your subscription stays active until <strong style={{ color: 'var(--star-white)' }}>{accessDate}</strong>, then <strong style={{ color: 'var(--star-white)' }}>{cancelling.name}</strong> and all its data will be permanently deleted.</p>
+                <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(255,50,50,0.07)', border: '1px solid rgba(255,50,50,0.25)', fontSize: 12, color: 'rgba(255,120,120,0.9)', marginBottom: 20, lineHeight: 1.6 }}>⚠️ This cannot be undone. All ranking history, posts, and data will be deleted permanently.</div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => setCancelling(null)} style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--dim)', cursor: 'pointer', fontSize: 13 }}>Keep Subscription</button>
+                  <button onClick={() => handleCancelAction('cancel')} disabled={cancelLoading} style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1px solid rgba(255,50,50,0.4)', background: 'rgba(255,50,50,0.1)', color: 'rgba(255,100,100,0.9)', cursor: 'pointer', fontSize: 13 }}>{cancelLoading ? 'Cancelling...' : 'Yes, Cancel'}</button>
+                </div>
+              </>
+            )}
+            {cancelStep === 'offer_accepted' && (
+              <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                <div style={{ fontSize: 44, marginBottom: 14 }}>🎉</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 8 }}>10% off applied!</div>
+                <p style={{ fontSize: 13, color: 'var(--dim)', marginBottom: 20 }}>Discount applied to your next invoice. Thanks for staying!</p>
+                <button onClick={() => setCancelling(null)} className="btn-primary" style={{ fontSize: 13, padding: '11px 24px' }}>Done</button>
+              </div>
+            )}
+            {cancelStep === 'paused' && (
+              <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                <div style={{ fontSize: 44, marginBottom: 14 }}>⏸️</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Subscription paused</div>
+                <p style={{ fontSize: 13, color: 'var(--dim)', marginBottom: 20 }}>Full access until {accessDate}.</p>
+                <button onClick={() => setCancelling(null)} className="btn-primary" style={{ fontSize: 13, padding: '11px 24px' }}>Got it</button>
+              </div>
+            )}
+            {cancelStep === 'cancelled' && (
+              <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                <div style={{ fontSize: 44, marginBottom: 14 }}>👋</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Cancellation confirmed</div>
+                <p style={{ fontSize: 13, color: 'var(--dim)', marginBottom: 20 }}>You have access until {accessDate}. Your data will be deleted at that time.</p>
+                <button onClick={() => setCancelling(null)} style={{ padding: '11px 24px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--dim)', cursor: 'pointer', fontSize: 13 }}>Close</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Summary */}
+      <div style={{ padding: '20px 24px', borderRadius: 16, background: 'linear-gradient(135deg, rgba(123,47,255,0.12), rgba(0,200,255,0.06))', border: '1px solid rgba(123,47,255,0.3)', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Active Locations</div>
+          <div style={{ fontSize: 13, color: 'var(--dim)' }}>{businesses.filter(b => !b.cancelAtPeriodEnd).length} location{businesses.filter(b => !b.cancelAtPeriodEnd).length !== 1 ? 's' : ''} · $79/mo each</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 900 }}>${totalMonthly}<span style={{ fontSize: 13, fontWeight: 400, color: 'var(--dim)' }}>/mo</span></div>
+          <button onClick={openPortal} disabled={portalLoading} style={{ marginTop: 8, padding: '7px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--dim)', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--font-body)' }}>{portalLoading ? 'Loading...' : 'Manage Payment Method'}</button>
+        </div>
+      </div>
+
+      {/* Location list */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--dim)' }}>Loading...</div>
+      ) : businesses.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--dim)', fontSize: 13 }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>🏢</div>
+          No active locations. <a href="/dashboard/businesses/add" style={{ color: 'var(--nebula-blue)' }}>Add your first location →</a>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {businesses.map(biz => (
+            <div key={biz.id} style={{ padding: '20px 24px', borderRadius: 14, background: 'rgba(232,238,255,0.02)', border: `1px solid ${biz.cancelAtPeriodEnd ? 'rgba(255,184,48,0.3)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, rgba(123,47,255,0.3), rgba(0,200,255,0.2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>{biz.name.slice(0,2).toUpperCase()}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{biz.name}</div>
+                <div style={{ fontSize: 12, color: 'var(--dim)' }}>{biz.address}</div>
+                {biz.cancelAtPeriodEnd && biz.stripeCurrentPeriodEnd && (
+                  <div style={{ fontSize: 11, color: 'rgba(255,184,48,0.9)', marginTop: 3 }}>
+                    ⚠️ Cancels {new Date(biz.stripeCurrentPeriodEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </div>
+                )}
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--nebula-blue)', marginBottom: 2 }}>$79<span style={{ fontSize: 11, color: 'var(--dim)', fontWeight: 400 }}>/mo</span></div>
+                {biz.stripeCurrentPeriodEnd && (
+                  <div style={{ fontSize: 11, color: 'var(--dim)' }}>
+                    {biz.cancelAtPeriodEnd ? 'Access until' : 'Renews'} {new Date(biz.stripeCurrentPeriodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </div>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                {biz.cancelAtPeriodEnd ? (
+                  <button onClick={() => handleReactivate(biz)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(20,200,100,0.4)', background: 'rgba(20,200,100,0.08)', color: 'rgba(20,200,100,0.9)', cursor: 'pointer', fontSize: 12 }}>Reactivate</button>
+                ) : (
+                  <button onClick={() => openCancel(biz)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(255,50,50,0.25)', background: 'transparent', color: 'rgba(255,100,100,0.7)', cursor: 'pointer', fontSize: 12 }}>Cancel</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ marginTop: 20, fontSize: 12, color: 'var(--dim2)', lineHeight: 1.6 }}>
+        Locations are billed at $79/month each. To add a new location, go to <a href="/dashboard/businesses/add" style={{ color: 'var(--nebula-blue)' }}>Add Business</a>. Cancellations take effect at the end of the current billing period.
+      </div>
+    </>
+  )
+}
 
 export default function Settings() {
   const [tab, setTab] = useState('profile')
@@ -128,37 +372,7 @@ export default function Settings() {
             </>
           )}
 
-          {tab === 'billing' && (
-            <>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, marginBottom: 28 }}>Billing & Plan</h2>
-              <div style={{ borderRadius: 16, padding: '24px', background: 'linear-gradient(135deg, rgba(123,47,255,0.12), rgba(255,45,154,0.07))', border: '1px solid rgba(123,47,255,0.3)', marginBottom: 24 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Nebula Plan</div>
-                    <div style={{ fontSize: 13, color: 'var(--dim)' }}>Up to 10 locations • White-label reports • Priority support</div>
-                  </div>
-                  <div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 900 }}>$297<span style={{ fontSize: 14, fontWeight: 400, color: 'var(--dim)' }}>/mo</span></div>
-                  </div>
-                </div>
-                <div style={{ marginTop: 20, display: 'flex', gap: 12 }}>
-                  <button className="btn-primary" style={{ fontSize: 11, padding: '10px 22px' }}>Upgrade to Galaxy</button>
-                  <button style={{ padding: '10px 22px', borderRadius: 30, border: '1px solid var(--border)', background: 'transparent', color: 'var(--dim)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Manage Billing</button>
-                </div>
-              </div>
-              <div style={{ borderRadius: 14, padding: '20px 24px', background: 'rgba(232,238,255,0.02)', border: '1px solid var(--border)' }}>
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, marginBottom: 16 }}>Payment Method</h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <div style={{ width: 48, height: 32, borderRadius: 6, background: 'rgba(232,238,255,0.08)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>💳</div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>Visa ending in 4242</div>
-                    <div style={{ fontSize: 12, color: 'var(--dim)' }}>Expires 12/26</div>
-                  </div>
-                  <button style={{ marginLeft: 'auto', padding: '6px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--dim)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Update</button>
-                </div>
-              </div>
-            </>
-          )}
+          {tab === 'billing' && <BillingTab />}
 
           {tab === 'integrations' && (
             <>
