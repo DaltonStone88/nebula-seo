@@ -39,27 +39,14 @@ export async function GET(req) {
 
     const page = await browser.newPage()
 
-    // Pass auth cookies so report page loads authenticated
-    const cookieHeader = req.headers.get('cookie') || ''
-    if (cookieHeader) {
-      const baseUrl = process.env.NEXTAUTH_URL || 'https://www.nebulaseo.com'
-      const domain = new URL(baseUrl).hostname
-      const cookies = cookieHeader.split(';').flatMap(c => {
-        const trimmed = c.trim()
-        const eqIdx = trimmed.indexOf('=')
-        if (eqIdx === -1) return []
-        const name = trimmed.slice(0, eqIdx).trim()
-        const value = trimmed.slice(eqIdx + 1).trim()
-        if (!name || !value) return []
-        // Only include session-related cookies
-        if (!name.startsWith('next-auth') && !name.startsWith('__Secure') && !name.startsWith('__Host')) return []
-        return [{ name, value, domain, path: '/' }]
-      })
-      if (cookies.length) await page.setCookie(...cookies)
-    }
-
     const baseUrl = process.env.NEXTAUTH_URL || 'https://www.nebulaseo.com'
-    await page.goto(`${baseUrl}/report/${auditId}`, {
+    
+    // Set auth header instead of cookies
+    await page.setExtraHTTPHeaders({
+      'x-internal-secret': process.env.NEXTAUTH_SECRET || '',
+    })
+
+    await page.goto(`${baseUrl}/report/${auditId}?secret=${encodeURIComponent(process.env.NEXTAUTH_SECRET || '')}`, {
       waitUntil: 'networkidle0',
       timeout: 45000,
     })
