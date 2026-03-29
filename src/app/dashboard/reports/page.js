@@ -126,13 +126,27 @@ function ReportsContent() {
   const [baselineFull, setBaselineFull] = useState(null)
   const [latestFull, setLatestFull] = useState(null)
 
-  const downloadReport = (auditId) => {
-    const win = window.open(`/report/${auditId}?print=1`, '_blank')
-    if (win) {
-      win.addEventListener('load', () => {
-        setTimeout(() => win.print(), 3000)
-      })
+  const [downloading, setDownloading] = useState(null)
+
+  const downloadReport = async (auditId) => {
+    setDownloading(auditId)
+    try {
+      const res = await fetch(`/api/report/pdf?auditId=${auditId}`)
+      if (!res.ok) throw new Error('PDF generation failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `seo-report-${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error('Download failed:', e)
+      alert('PDF generation failed. Try again in a moment.')
     }
+    setDownloading(null)
   }
 
   const fetchBusinesses = async () => {
@@ -264,7 +278,7 @@ function ReportsContent() {
                       title="Download PDF Report"
                       onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(123,47,255,0.4)'; e.currentTarget.style.color = 'var(--star-white)' }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--dim)' }}
-                    >⬇ PDF</button>
+                    >{downloading ? '⏳ Generating...' : '⬇ PDF'}</button>
                   )}
                   </div>
                 </div>
