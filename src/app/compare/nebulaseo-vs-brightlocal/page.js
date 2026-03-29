@@ -39,6 +39,7 @@ export default function Page() {
         'More established with a larger feature set',
         '14-day free trial vs $1 trial',
       ]}
+      rows={rows}
       verdict="BrightLocal is the better choice for agencies that need a full-service local SEO suite including citation management and comprehensive reputation tracking. NebulaSEO is the better choice if your primary focus is GBP ranking — you want AI-generated content published monthly and visual rank tracking showing exactly where you stand across your service area. For most local businesses, that combination drives more ranking improvement than a broader tool that doesn't include content generation."
     />
   )
