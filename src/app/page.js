@@ -85,10 +85,37 @@ export default function Home() {
         @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
         @keyframes spin-slow { to{transform:rotate(360deg)} }
         .float-anim { animation: float 4s ease-in-out infinite; }
+        @media(max-width:1024px){
+          .hero-section{padding:120px 32px 60px!important}
+          .section-pad{padding:80px 32px!important}
+          .section-pad-sm{padding:60px 32px!important}
+          .story-grid{grid-template-columns:1fr 1fr!important}
+          .success-grid{grid-template-columns:1fr!important}
+        }
+        @media(max-width:768px){
+          .hero-section{padding:110px 20px 50px!important}
+          .section-pad{padding:60px 20px!important}
+          .section-pad-sm{padding:40px 20px!important}
+          .feat-grid{grid-template-columns:1fr!important}
+          .step-grid{grid-template-columns:1fr!important}
+          .testi-grid{grid-template-columns:1fr!important}
+          .story-grid{grid-template-columns:1fr 1fr!important}
+          .cta-features{grid-template-columns:1fr!important}
+          .hero-btns{flex-direction:column;align-items:center}
+          .success-before-after{grid-template-columns:1fr!important;gap:16px!important}
+          nav{padding:16px 20px!important}
+          nav ul{display:none!important}
+          footer{padding:40px 20px!important}
+          .footer-grid{grid-template-columns:1fr 1fr!important}
+        }
+        @media(max-width:480px){
+          .story-grid{grid-template-columns:1fr 1fr!important}
+          .footer-grid{grid-template-columns:1fr!important}
+        }
       `}</style>
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <section style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '140px 60px 80px', position: 'relative', overflow: 'hidden', zIndex: 1 }}>
+      <section className="hero-section" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '140px 60px 80px', position: 'relative', overflow: 'hidden', zIndex: 1 }}>
         {[
           { w: 600, bg: 'rgba(123,47,255,0.18)', top: '-150px', left: '-150px', delay: '0s' },
           { w: 450, bg: 'rgba(255,45,154,0.12)', bottom: '-100px', right: '-100px', delay: '3s' },
