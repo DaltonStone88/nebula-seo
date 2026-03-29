@@ -86,9 +86,25 @@ function EditModal({ biz, onClose, onSaved }) {
 
     onSaved(data.business)
 
-    // If new keywords added or keywords changed, trigger audits and redirect
-    if (data.needsAudit) {
-      router.push('/dashboard/reports?tab=heatmap')
+    // Auto-run audits for newly added keywords then redirect
+    if (data.needsAudit && data.addedKeywords?.length > 0) {
+      for (const { keyword } of data.addedKeywords) {
+        try {
+          await fetch('/api/places/rank-audit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              businessId: data.business.id,
+              keyword,
+              gridSize: data.business.gridSize || '7x7',
+              spacing: data.business.gridSpacing || 'medium',
+            }),
+          })
+        } catch (e) { console.error('Audit failed for', keyword, e) }
+      }
+      router.push('/dashboard/reports')
+    } else if (!data.needsAudit) {
+      onClose()
     }
   }
 
