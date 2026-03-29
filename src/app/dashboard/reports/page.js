@@ -390,6 +390,20 @@ function ReportsContent() {
 
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 16 }}><div style={{ width: 36, height: 36, border: '3px solid rgba(123,47,255,0.3)', borderTopColor: 'var(--nebula-purple)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>
 
+  if (!selectedBiz) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '70vh', textAlign: 'center', padding: '0 40px' }}>
+      <div style={{ width: 80, height: 80, borderRadius: 20, background: 'linear-gradient(135deg, rgba(123,47,255,0.2), rgba(0,200,255,0.1))', border: '1px solid rgba(123,47,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, marginBottom: 28 }}>📊</div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, marginBottom: 10 }}>No Reports Yet</div>
+      <p style={{ fontSize: 14, color: 'var(--dim)', lineHeight: 1.8, maxWidth: 400, marginBottom: 32 }}>
+        Reports are generated from rank audits run against your businesses. Add a business to get started — your first audit runs automatically.
+      </p>
+      <a href="/dashboard/businesses/add" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 28px', borderRadius: 12, background: 'linear-gradient(135deg, var(--nebula-purple), var(--nebula-pink))', color: '#fff', fontWeight: 600, fontSize: 13, fontFamily: 'var(--font-body)', textDecoration: 'none' }}>
+        + Add Your First Business
+      </a>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  )
+
   const selectStyle = { width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'rgba(6,6,18,0.8)', color: 'var(--star-white)', fontSize: 13, outline: 'none' }
 
   return (
