@@ -396,10 +396,16 @@ export default function Automation() {
   })
 
   if (!selectedBiz) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '70vh', textAlign: 'center', padding: '0 40px' }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>⚡</div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 10 }}>No Business Selected</div>
-      <p style={{ fontSize: 14, color: 'var(--dim)' }}>Select a business from the sidebar to manage its automation.</p>
+    <div>
+      <div style={{ padding: '20px 36px', borderBottom: '1px solid var(--border)', background: 'rgba(6,6,18,0.5)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>Automation</h1>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '70vh', textAlign: 'center', padding: '0 40px' }}>
+        <div style={{ fontSize: 56, marginBottom: 20 }}>⚡</div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, marginBottom: 10 }}>No Business Selected</div>
+        <p style={{ fontSize: 14, color: 'var(--dim)', marginBottom: 28, maxWidth: 360, lineHeight: 1.7 }}>Add a business to start generating AI-powered Google Business Profile posts automatically each month.</p>
+        <a href="/dashboard/businesses/add" className="btn-primary" style={{ fontSize: 13, padding: '12px 28px', textDecoration: 'none' }}>+ Add Your First Business</a>
+      </div>
     </div>
   )
 
