@@ -632,6 +632,18 @@ function ReportsContent() {
                             </div>
                           )
 
+                          // If no audit exists at all for this keyword, show pending on both sides
+                          const neitherAudit = !baseline && !latest && !fullBaseline && !fullLatest
+                          if (neitherAudit) {
+                            return (
+                              <div style={{ padding: '40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, textAlign: 'center' }}>
+                                <div style={{ width: 52, height: 52, border: '3px solid rgba(123,47,255,0.3)', borderTopColor: 'var(--nebula-purple)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                                <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, marginTop: 8 }}>Audit Generating</div>
+                                <div style={{ fontSize: 13, color: 'var(--dim)' }}>Your first rank audit is being run now. Refresh in a minute.</div>
+                              </div>
+                            )
+                          }
+
                           return (
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, padding: '20px' }}>
                               {renderMap(fullBaseline || fullLatest || baseline || latest, 'Baseline Audit')}
