@@ -7,19 +7,23 @@ export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const businesses = await prisma.business.findMany({
-    where: { userId: session.user.id },
-    include: {
-      _count: { select: { reviews: true, posts: true, automations: true } },
-      rankAudits: {
-        orderBy: { createdAt: 'asc' },
-        select: { id: true, keyword: true, avgRank: true, top3Percent: true, isBaseline: true, createdAt: true, gridSize: true, keywordChangedAt: true, keywordChangedFrom: true, daysTracked: true },
+  try {
+    const businesses = await prisma.business.findMany({
+      where: { userId: session.user.id },
+      include: {
+        _count: { select: { reviews: true, posts: true, automations: true } },
+        rankAudits: {
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, keyword: true, avgRank: true, top3Percent: true, isBaseline: true, createdAt: true, gridSize: true },
+        },
       },
-    },
-    orderBy: { createdAt: 'desc' },
-  })
-
-  return NextResponse.json(businesses)
+      orderBy: { createdAt: 'desc' },
+    })
+    return NextResponse.json(businesses)
+  } catch (e) {
+    console.error('businesses GET error:', e)
+    return NextResponse.json({ error: e.message }, { status: 500 })
+  }
 }
 
 export async function POST(req) {
@@ -45,7 +49,7 @@ export async function POST(req) {
       targetCities: body.targetCities || [],
       gridSize: body.gridSize || '7x7',
       userId: session.user.id,
-      keywordHistory: (body.targetKeywords || []).map(kw => ({ keyword: kw, changedAt: new Date().toISOString(), changedFrom: null })),
+
     },
   })
 
@@ -74,7 +78,6 @@ export async function PATCH(req) {
   // ── Keyword change logic ────────────────────────────────────────────────────
   const changedKeywords = []   // { index, oldKeyword, newKeyword }
   const addedKeywords   = []   // brand new slots being filled
-  const keywordHistory  = Array.isArray(existing.keywordHistory) ? [...existing.keywordHistory] : []
 
   if (newKeywords) {
     const oldKeywords = existing.targetKeywords || []
@@ -88,29 +91,12 @@ export async function PATCH(req) {
       if (!oldKw && newKw) {
         // Brand new keyword being added
         addedKeywords.push({ index: i, keyword: newKw })
-        keywordHistory[i] = { keyword: newKw, changedAt: now.toISOString(), changedFrom: null }
       } else if (oldKw && newKw !== oldKw) {
-        // Existing keyword being changed — check 30-day limit
-        const histEntry = keywordHistory[i]
-        if (histEntry?.changedAt) {
-          const daysSince = (now - new Date(histEntry.changedAt)) / (1000 * 60 * 60 * 24)
-          if (daysSince < 30) {
-            const daysRemaining = Math.ceil(30 - daysSince)
-            return NextResponse.json({
-              error: 'KEYWORD_CHANGE_TOO_SOON',
-              keyword: oldKw,
-              daysRemaining,
-              message: `You can only change each keyword once every 30 days. "${oldKw}" was last changed ${Math.floor(daysSince)} days ago. Please wait ${daysRemaining} more day${daysRemaining !== 1 ? 's' : ''}.`
-            }, { status: 429 })
-          }
-        }
         changedKeywords.push({ index: i, oldKeyword: oldKw, newKeyword: newKw })
-        keywordHistory[i] = { keyword: newKw, changedAt: now.toISOString(), changedFrom: oldKw }
       }
     }
 
     data.targetKeywords = newKeywords.map(k => k?.trim()).filter(Boolean)
-    data.keywordHistory = keywordHistory
   }
 
   const business = await prisma.business.update({ where: { id }, data })
