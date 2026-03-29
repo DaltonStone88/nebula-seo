@@ -92,6 +92,23 @@ export async function PATCH(req) {
         // Brand new keyword being added
         addedKeywords.push({ index: i, keyword: newKw })
       } else if (oldKw && newKw !== oldKw) {
+        // Changing an existing keyword — enforce 30-day limit using the oldest audit date
+        const oldestAudit = await prisma.rankAudit.findFirst({
+          where: { businessId: id, keyword: oldKw },
+          orderBy: { createdAt: 'asc' },
+        })
+        if (oldestAudit) {
+          const daysSince = (now - new Date(oldestAudit.createdAt)) / (1000 * 60 * 60 * 24)
+          if (daysSince < 30) {
+            const daysRemaining = Math.ceil(30 - daysSince)
+            return NextResponse.json({
+              error: 'KEYWORD_CHANGE_TOO_SOON',
+              keyword: oldKw,
+              daysRemaining,
+              message: `"${oldKw}" was set ${Math.floor(daysSince)} day${Math.floor(daysSince) !== 1 ? 's' : ''} ago. You can only change each keyword once every 30 days. Please wait ${daysRemaining} more day${daysRemaining !== 1 ? 's' : ''}.`
+            }, { status: 429 })
+          }
+        }
         changedKeywords.push({ index: i, oldKeyword: oldKw, newKeyword: newKw })
       }
     }
@@ -101,9 +118,8 @@ export async function PATCH(req) {
 
   const business = await prisma.business.update({ where: { id }, data })
 
-  // ── Delete old audits for changed keywords, mark new baseline needed ────────
+  // ── Delete old audits for changed keywords ──────────────────────────────────
   for (const changed of changedKeywords) {
-    // Remove all existing audits for the old keyword
     await prisma.rankAudit.deleteMany({ where: { businessId: id, keyword: changed.oldKeyword } })
   }
 
