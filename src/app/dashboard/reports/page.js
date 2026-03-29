@@ -28,7 +28,7 @@ function latLngToPixel(lat, lng, centerLat, centerLng, zoom, mapW, mapH) {
   }
 }
 
-function HeatmapGrid({ audit, title, subtitle, business }) {
+function HeatmapGrid({ audit, title, subtitle, business, onDownload }) {
   if (!audit) return (
     <div style={{ flex: 1, borderRadius: 16, border: '1px solid var(--border)', background: 'rgba(232,238,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 480 }}>
       <div style={{ textAlign: 'center', color: 'var(--dim)', fontSize: 14 }}>
@@ -125,20 +125,62 @@ function ReportsContent() {
   const [loading, setLoading] = useState(true)
   const [baselineFull, setBaselineFull] = useState(null)
   const [latestFull, setLatestFull] = useState(null)
-  const [downloading, setDownloading] = useState(false)
+  const [downloading, setDownloading] = useState(null)
 
-  const downloadReport = async (auditId, whitelabel = false) => {
-    setDownloading(true)
+  const downloadReport = async (auditId) => {
+    setDownloading(auditId)
     try {
-      const url = `/api/report/pdf?auditId=${auditId}${whitelabel ? '&wl=1' : ''}`
-      const res = await fetch(url)
-      const blob = await res.blob()
-      const a = document.createElement('a')
-      a.href = URL.createObjectURL(blob)
-      a.download = `seo-report-${new Date().toISOString().split('T')[0]}.pdf`
-      a.click()
-    } catch (e) { console.error(e) }
-    setDownloading(false)
+      const { default: jsPDF } = await import('jspdf')
+      const { default: html2canvas } = await import('html2canvas')
+      
+      // Open report in hidden iframe to render it
+      const iframe = document.createElement('iframe')
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:900px;height:100vh;border:none;'
+      iframe.src = `/dashboard/report/${auditId}`
+      document.body.appendChild(iframe)
+      
+      await new Promise(resolve => iframe.onload = () => setTimeout(resolve, 3000))
+      
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const iframeDoc = iframe.contentDocument
+      const pages = iframeDoc.querySelectorAll('[style*="pageBreakAfter"], [style*="page-break-after"], div[style*="minHeight: 100vh"], div[style*="min-height: 100vh"]')
+      
+      const allDivs = Array.from(iframeDoc.body.querySelectorAll(':scope > div > div'))
+      const pageDivs = allDivs.length > 0 ? allDivs : [iframeDoc.body.firstChild]
+      
+      // Capture the whole report body as pages
+      const reportEl = iframeDoc.body.firstChild
+      const canvas = await html2canvas(reportEl, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        width: 900,
+        backgroundColor: '#ffffff',
+      })
+      
+      const imgData = canvas.toDataURL('image/jpeg', 0.95)
+      const pageW = 210 // A4 width mm
+      const pageH = 297 // A4 height mm
+      const imgW = pageW
+      const imgH = (canvas.height * pageW) / canvas.width
+      
+      let y = 0
+      let pageNum = 0
+      while (y < imgH) {
+        if (pageNum > 0) doc.addPage()
+        doc.addImage(imgData, 'JPEG', 0, -y, imgW, imgH)
+        y += pageH
+        pageNum++
+      }
+      
+      document.body.removeChild(iframe)
+      doc.save(`seo-report-${new Date().toISOString().split('T')[0]}.pdf`)
+    } catch (e) { 
+      console.error('PDF error:', e)
+      // Fallback: open report page for printing
+      window.open(`/dashboard/report/${auditId}`, '_blank')
+    }
+    setDownloading(null)
   }
 
   const fetchBusinesses = async () => {
@@ -266,11 +308,11 @@ function ReportsContent() {
                       : '🔍 Run Audit'}
                   </button>
                   {latestFull && (
-                    <button onClick={() => downloadReport(latestFull.id)} disabled={downloading} style={{ padding: '11px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'rgba(232,238,255,0.04)', color: 'var(--dim)', cursor: 'pointer', fontSize: 13, transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+                    <button onClick={() => downloadReport(latestFull.id)} disabled={!!downloading} style={{ padding: '11px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'rgba(232,238,255,0.04)', color: 'var(--dim)', cursor: 'pointer', fontSize: 13, transition: 'all 0.2s', whiteSpace: 'nowrap' }}
                       title="Download PDF Report"
                       onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(123,47,255,0.4)'; e.currentTarget.style.color = 'var(--star-white)' }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--dim)' }}
-                    >{downloading ? '...' : '⬇ PDF'}</button>
+                    >{downloading === latestFull?.id ? '...' : '⬇ PDF'}</button>
                   )}
                   </div>
                 </div>
@@ -295,12 +337,14 @@ function ReportsContent() {
                   title="Baseline Audit"
                   subtitle={baselineFull ? new Date(baselineFull.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No baseline yet'}
                   business={selectedBiz}
+                  onDownload={downloadReport}
                 />
                 <HeatmapGrid
                   audit={latestFull?.id !== baselineFull?.id ? latestFull : null}
                   title="Latest Audit"
                   subtitle={latestFull?.id !== baselineFull?.id ? new Date(latestFull.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Run another audit to compare'}
                   business={selectedBiz}
+                  onDownload={downloadReport}
                 />
               </div>
 
