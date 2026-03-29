@@ -72,7 +72,7 @@ export default function ReportPage() {
     <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", color: '#1a1a2e', background: '#fff', width: '100%' }}>
 
       {/* ── PAGE 1: COVER ─────────────────────────────── */}
-      <div style={{ minHeight: '100vh', background: `linear-gradient(135deg, #0a0a1f 0%, #1a0a3a 50%, #0a1a3a 100%)`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '60px 70px', pageBreakAfter: 'always', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ minHeight: '100vh', background: `linear-gradient(135deg, #0a0a1f 0%, #1a0a3a 50%, #0a1a3a 100%)`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '60px 70px', pageBreakAfter: 'always', position: 'relative', overflow: 'hidden', width: '100%' }}>
         {/* Background decoration */}
         <div style={{ position: 'absolute', top: -100, right: -100, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(123,47,255,0.2), transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: -50, left: -50, width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,200,255,0.1), transparent 70%)', pointerEvents: 'none' }} />
@@ -115,7 +115,7 @@ export default function ReportPage() {
       </div>
 
       {/* ── PAGE 2: EXECUTIVE SUMMARY ─────────────────── */}
-      <div style={{ minHeight: '100vh', padding: '60px 70px', pageBreakAfter: 'always', background: '#fff' }}>
+      <div style={{ minHeight: '100vh', padding: '0', pageBreakAfter: 'always', background: '#fff' }}>
         <div style={{ fontSize: 11, color: brandColor, letterSpacing: 4, textTransform: 'uppercase', marginBottom: 8 }}>Section 01</div>
         <div style={{ fontSize: 36, fontWeight: 900, color: '#1a1a2e', marginBottom: 6 }}>Your Visibility</div>
         <div style={{ fontSize: 36, fontWeight: 900, color: brandColor, marginBottom: 48 }}>At a Glance</div>
@@ -198,7 +198,7 @@ export default function ReportPage() {
       </div>
 
       {/* ── PAGE 3: HEATMAP ───────────────────────────── */}
-      <div style={{ minHeight: '100vh', padding: '60px 70px', pageBreakAfter: 'always', background: '#fff' }}>
+      <div style={{ minHeight: '100vh', padding: '0', pageBreakAfter: 'always', background: '#fff' }}>
         <div style={{ fontSize: 11, color: brandColor, letterSpacing: 4, textTransform: 'uppercase', marginBottom: 8 }}>Section 02</div>
         <div style={{ fontSize: 36, fontWeight: 900, color: '#1a1a2e', marginBottom: 6 }}>Your Ranking Map</div>
         <div style={{ fontSize: 14, color: '#666', marginBottom: 32, lineHeight: 1.6, maxWidth: 600 }}>
@@ -266,7 +266,7 @@ export default function ReportPage() {
       </div>
 
       {/* ── PAGE 4: PERFORMANCE ───────────────────────── */}
-      <div style={{ minHeight: '100vh', padding: '60px 70px', pageBreakAfter: 'always', background: '#fff' }}>
+      <div style={{ minHeight: '100vh', padding: '0', pageBreakAfter: 'always', background: '#fff' }}>
         <div style={{ fontSize: 11, color: brandColor, letterSpacing: 4, textTransform: 'uppercase', marginBottom: 8 }}>Section 03</div>
         <div style={{ fontSize: 36, fontWeight: 900, color: '#1a1a2e', marginBottom: 6 }}>Business Performance</div>
         <div style={{ fontSize: 14, color: '#666', marginBottom: 48, lineHeight: 1.6 }}>
@@ -301,7 +301,7 @@ export default function ReportPage() {
       </div>
 
       {/* ── PAGE 5: MARKET POSITION ───────────────────── */}
-      <div style={{ minHeight: '100vh', padding: '60px 70px', pageBreakAfter: 'always', background: '#fff' }}>
+      <div style={{ minHeight: '100vh', padding: '0', pageBreakAfter: 'always', background: '#fff' }}>
         <div style={{ fontSize: 11, color: brandColor, letterSpacing: 4, textTransform: 'uppercase', marginBottom: 8 }}>Section 04</div>
         <div style={{ fontSize: 36, fontWeight: 900, color: '#1a1a2e', marginBottom: 6 }}>Your Market Position</div>
         <div style={{ fontSize: 14, color: '#666', marginBottom: 48, lineHeight: 1.6 }}>
@@ -349,7 +349,7 @@ export default function ReportPage() {
       </div>
 
       {/* ── PAGE 6: SUMMARY ───────────────────────────── */}
-      <div style={{ minHeight: '100vh', padding: '60px 70px', background: '#fff' }}>
+      <div style={{ minHeight: '100vh', padding: '0', background: '#fff' }}>
         <div style={{ fontSize: 11, color: brandColor, letterSpacing: 4, textTransform: 'uppercase', marginBottom: 8 }}>Section 05</div>
         <div style={{ fontSize: 36, fontWeight: 900, color: '#1a1a2e', marginBottom: 6 }}>30-Day Summary</div>
         <div style={{ fontSize: 14, color: '#666', marginBottom: 48, lineHeight: 1.6 }}>Everything at a glance for {reportDate}.</div>
