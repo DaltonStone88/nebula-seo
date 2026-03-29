@@ -34,6 +34,13 @@ export async function POST(req) {
     where: { businessId, keyword },
   })
 
+  // Check if this keyword was recently changed (for PDF note)
+  const keywordHistory = Array.isArray(business.keywordHistory) ? business.keywordHistory : []
+  const histEntry = keywordHistory.find(h => h.keyword === keyword)
+  const keywordChangedAt = histEntry?.changedFrom ? new Date(histEntry.changedAt) : null
+  const keywordChangedFrom = histEntry?.changedFrom || null
+  const daysTracked = keywordChangedAt ? Math.ceil((new Date() - keywordChangedAt) / (1000 * 60 * 60 * 24)) : null
+
   const audit = await prisma.rankAudit.create({
     data: {
       businessId,
@@ -43,6 +50,7 @@ export async function POST(req) {
       top3Percent,
       gridSize: gridSize || '7x7',
       isBaseline: existingAudits === 0,
+      ...(keywordChangedAt && { keywordChangedAt, keywordChangedFrom, daysTracked }),
     },
   })
 
