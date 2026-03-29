@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 const RANK_COLORS = {
   1: '#1ec85a', 2: '#1ec85a', 3: '#1ec85a',
@@ -13,9 +14,9 @@ function getRankColor(rank) {
   return RANK_COLORS[rank] || '#b01414'
 }
 
-function HeatmapGrid({ audit, title, subtitle }) {
+function HeatmapGrid({ audit, title, subtitle, business }) {
   if (!audit) return (
-    <div style={{ flex: 1, borderRadius: 16, border: '1px solid var(--border)', background: 'rgba(232,238,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+    <div style={{ flex: 1, borderRadius: 16, border: '1px solid var(--border)', background: 'rgba(232,238,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 480 }}>
       <div style={{ textAlign: 'center', color: 'var(--dim)', fontSize: 14 }}>
         <div style={{ fontSize: 32, marginBottom: 12 }}>📊</div>
         No audit data yet
@@ -26,39 +27,58 @@ function HeatmapGrid({ audit, title, subtitle }) {
   const gridData = Array.isArray(audit.gridData) ? audit.gridData : []
   const gridSize = audit.gridSize || '7x7'
   const cols = parseInt(gridSize.split('x')[0])
+  const centerLat = business?.lat || 0
+  const centerLng = business?.lng || 0
+  const zoom = cols <= 5 ? 14 : cols <= 7 ? 13 : cols <= 10 ? 12 : cols <= 15 ? 11 : 10
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
   return (
-    <div style={{ flex: 1, borderRadius: 16, border: '1px solid var(--border)', background: 'rgba(0,0,0,0.3)', overflow: 'hidden' }}>
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+    <div style={{ flex: 1, borderRadius: 16, border: '1px solid var(--border)', overflow: 'hidden', background: '#1a1a2e' }}>
+      <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(6,6,18,0.95)', backdropFilter: 'blur(10px)' }}>
         <div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{title}</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, marginBottom: 2 }}>{title}</div>
           <div style={{ fontSize: 11, color: 'var(--dim)' }}>{subtitle}</div>
         </div>
-        <div style={{ display: 'flex', gap: 20, fontSize: 13 }}>
+        <div style={{ display: 'flex', gap: 18 }}>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 11, color: 'var(--dim)', marginBottom: 2 }}>Avg Rank</div>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>{audit.avgRank}</div>
+            <div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 1 }}>Avg Rank</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15 }}>{audit.avgRank}</div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 11, color: 'var(--dim)', marginBottom: 2 }}>Top 3</div>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, color: 'var(--nebula-blue)' }}>{audit.top3Percent}%</div>
+            <div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 1 }}>Top 3</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: 'var(--nebula-blue)' }}>{audit.top3Percent}%</div>
           </div>
         </div>
       </div>
-      <div style={{ padding: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 3 }}>
+
+      <div style={{ position: 'relative', width: '100%', paddingBottom: '80%' }}>
+        <img
+          src={`https://maps.googleapis.com/maps/api/staticmap?center=${centerLat},${centerLng}&zoom=${zoom}&size=640x512&scale=2&style=feature:all|element:labels.text.fill|color:0x888888&style=feature:road|color:0x2a2a3a&style=feature:road|element:labels|visibility:simplified&style=feature:water|color:0x0a0a2f&style=feature:landscape|color:0x1a1a2e&style=feature:poi|visibility:off&style=feature:transit|visibility:off&key=${apiKey}`}
+          alt="map background"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+        <div style={{
+          position: 'absolute', inset: '6px',
+          display: 'grid',
+          gridTemplateColumns: `repeat(${cols}, 1fr)`,
+          gap: cols > 15 ? 1 : cols > 10 ? 2 : 2,
+        }}>
           {gridData.map((cell, i) => (
             <div key={i} title={`Rank: ${cell.rank}`} style={{
-              aspectRatio: '1', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: cols > 15 ? 7 : cols > 10 ? 8 : 9,
-              fontWeight: 700, fontFamily: 'var(--font-display)',
-              background: getRankColor(cell.rank),
-              color: 'rgba(255,255,255,0.95)',
+              borderRadius: cols > 15 ? 2 : 3,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: cols > 15 ? 6 : cols > 10 ? 7 : 8,
+              fontWeight: 800, fontFamily: 'var(--font-display)',
+              background: getRankColor(cell.rank) + 'cc',
+              color: '#fff',
+              textShadow: '0 1px 3px rgba(0,0,0,0.9)',
               transition: 'transform 0.15s',
               cursor: 'default',
+              border: '1px solid rgba(255,255,255,0.12)',
+              position: 'relative',
             }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.3)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.4)'; e.currentTarget.style.zIndex = '10'; e.currentTarget.style.background = getRankColor(cell.rank) }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.zIndex = '1'; e.currentTarget.style.background = getRankColor(cell.rank) + 'cc' }}
             >{cell.rank}</div>
           ))}
         </div>
@@ -67,8 +87,9 @@ function HeatmapGrid({ audit, title, subtitle }) {
   )
 }
 
-export default function Reports() {
-  const [view, setView] = useState('reports')
+function ReportsContent() {
+  const searchParams = useSearchParams()
+  const [view, setView] = useState(searchParams.get('tab') === 'heatmap' ? 'heatmap' : 'reports')
   const [businesses, setBusinesses] = useState([])
   const [selectedBiz, setSelectedBiz] = useState(null)
   const [selectedKeyword, setSelectedKeyword] = useState(0)
@@ -82,7 +103,7 @@ export default function Reports() {
   const fetchBusinesses = async () => {
     const res = await fetch('/api/businesses')
     const data = await res.json()
-    setBusinesses(data)
+    setBusinesses(Array.isArray(data) ? data : [])
     if (!selectedBiz && data.length > 0) setSelectedBiz(data[0])
     else if (selectedBiz) {
       const updated = data.find(b => b.id === selectedBiz.id)
@@ -97,15 +118,14 @@ export default function Reports() {
 
   useEffect(() => {
     if (!selectedBiz?.id || !keyword) return
+    setBaselineFull(null)
+    setLatestFull(null)
     fetch(`/api/places/rank-audit?businessId=${selectedBiz.id}&keyword=${encodeURIComponent(keyword)}`)
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
           setBaselineFull(data.find(a => a.isBaseline) || data[0])
           setLatestFull(data[data.length - 1])
-        } else {
-          setBaselineFull(null)
-          setLatestFull(null)
         }
       })
   }, [selectedBiz?.id, keyword])
@@ -120,7 +140,6 @@ export default function Reports() {
         body: JSON.stringify({ businessId: selectedBiz.id, keyword, gridSize, spacing }),
       })
       await fetchBusinesses()
-      // Refetch full audit data
       const res = await fetch(`/api/places/rank-audit?businessId=${selectedBiz.id}&keyword=${encodeURIComponent(keyword)}`)
       const data = await res.json()
       if (Array.isArray(data) && data.length > 0) {
@@ -146,6 +165,8 @@ export default function Reports() {
     </div>
   )
 
+  const selectStyle = { width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'rgba(6,6,18,0.8)', color: 'var(--star-white)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none' }
+
   return (
     <div>
       <div style={{ padding: '20px 36px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(6,6,18,0.5)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50 }}>
@@ -158,7 +179,7 @@ export default function Reports() {
           </div>
         </div>
         {businesses.length > 0 && (
-          <select onChange={e => setSelectedBiz(businesses.find(b => b.id === e.target.value))} style={{ padding: '8px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'rgba(6,6,18,0.8)', color: 'var(--star-white)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none' }}>
+          <select onChange={e => setSelectedBiz(businesses.find(b => b.id === e.target.value))} style={{ ...selectStyle, width: 'auto' }}>
             {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         )}
@@ -174,55 +195,71 @@ export default function Reports() {
             </div>
           ) : (
             <>
-              <div style={{ borderRadius: 16, background: 'rgba(232,238,255,0.02)', border: '1px solid var(--border)', padding: '24px', marginBottom: 24 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, alignItems: 'end' }}>
+              {/* Controls */}
+              <div style={{ borderRadius: 16, background: 'rgba(232,238,255,0.02)', border: '1px solid var(--border)', padding: '20px 24px', marginBottom: 20 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 16, alignItems: 'end' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: 11, color: 'var(--dim)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>Keyword</label>
-                    <select value={selectedKeyword} onChange={e => setSelectedKeyword(Number(e.target.value))} style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'rgba(6,6,18,0.8)', color: 'var(--star-white)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none' }}>
+                    <select value={selectedKeyword} onChange={e => setSelectedKeyword(Number(e.target.value))} style={selectStyle}>
                       {(selectedBiz.targetKeywords || []).map((kw, i) => <option key={i} value={i}>{kw}</option>)}
                     </select>
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 11, color: 'var(--dim)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>Grid Size</label>
-                    <select value={gridSize} onChange={e => setGridSize(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'rgba(6,6,18,0.8)', color: 'var(--star-white)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none' }}>
+                    <select value={gridSize} onChange={e => setGridSize(e.target.value)} style={selectStyle}>
                       {['5x5','7x7','10x10','15x15','20x20'].map(s => <option key={s} value={s}>{s} ({parseInt(s)**2} pts)</option>)}
                     </select>
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 11, color: 'var(--dim)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>Spacing</label>
-                    <select value={spacing} onChange={e => setSpacing(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'rgba(6,6,18,0.8)', color: 'var(--star-white)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none' }}>
+                    <select value={spacing} onChange={e => setSpacing(e.target.value)} style={selectStyle}>
                       <option value="small">Tight (~0.35 mi)</option>
                       <option value="medium">Standard (~0.6 mi)</option>
                       <option value="large">Regional (~1 mi)</option>
                     </select>
                   </div>
-                  <button onClick={runAudit} disabled={running || !selectedBiz.targetKeywords?.length} className="btn-primary" style={{ fontSize: 12, padding: '11px 20px', justifyContent: 'center' }}>
-                    {running ? <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />Running...</span> : '🔍 Run Audit'}
+                  <button onClick={runAudit} disabled={running || !selectedBiz.targetKeywords?.length} className="btn-primary" style={{ fontSize: 12, padding: '11px 24px', justifyContent: 'center', whiteSpace: 'nowrap' }}>
+                    {running
+                      ? <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />Running...</span>
+                      : '🔍 Run Audit'}
                   </button>
                 </div>
               </div>
 
+              {/* Improvement bar */}
               {hasImprovement && (
-                <div style={{ borderRadius: 16, padding: '20px 24px', background: 'linear-gradient(135deg, rgba(0,200,255,0.08), rgba(123,47,255,0.06))', border: '1px solid rgba(0,200,255,0.2)', marginBottom: 24, display: 'flex', gap: 32, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <div><div style={{ fontSize: 11, color: 'var(--dim)', marginBottom: 4 }}>Keyword</div><div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700 }}>{keyword}</div></div>
-                  <div><div style={{ fontSize: 11, color: 'var(--dim)', marginBottom: 4 }}>Improvement</div><div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 900, color: improvementPct > 0 ? 'var(--nebula-blue)' : 'var(--nebula-pink)' }}>{improvementPct > 0 ? '+' : ''}{improvementPct}% {improvementPct > 20 ? '🔥' : ''}</div></div>
-                  <div><div style={{ fontSize: 11, color: 'var(--dim)', marginBottom: 4 }}>Baseline Avg</div><div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700 }}>{baselineAudit.avgRank}</div></div>
-                  <div><div style={{ fontSize: 11, color: 'var(--dim)', marginBottom: 4 }}>Current Avg</div><div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--nebula-blue)' }}>{latestAudit.avgRank}</div></div>
-                  <div><div style={{ fontSize: 11, color: 'var(--dim)', marginBottom: 4 }}>Top 3 Placements</div><div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--nebula-blue)' }}>{latestAudit.top3Percent}%</div></div>
-                  <div style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--dim)' }}>{keywordAudits.length} audits total</div>
+                <div style={{ borderRadius: 14, padding: '16px 24px', background: 'linear-gradient(135deg, rgba(0,200,255,0.08), rgba(123,47,255,0.06))', border: '1px solid rgba(0,200,255,0.2)', marginBottom: 20, display: 'flex', gap: 28, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div><div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 3 }}>Keyword</div><div style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700 }}>{keyword}</div></div>
+                  <div><div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 3 }}>Improvement</div><div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: improvementPct > 0 ? 'var(--nebula-blue)' : 'var(--nebula-pink)' }}>{improvementPct > 0 ? '+' : ''}{improvementPct}% {improvementPct > 20 ? '🔥' : ''}</div></div>
+                  <div><div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 3 }}>Baseline Avg</div><div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>{baselineAudit.avgRank}</div></div>
+                  <div><div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 3 }}>Current Avg</div><div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--nebula-blue)' }}>{latestAudit.avgRank}</div></div>
+                  <div><div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 3 }}>Top 3</div><div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--nebula-blue)' }}>{latestAudit.top3Percent}%</div></div>
+                  <div style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--dim)' }}>{keywordAudits.length} audits</div>
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: 20 }}>
-                <HeatmapGrid audit={baselineFull} title="Baseline Audit" subtitle={baselineFull ? new Date(baselineFull.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No baseline yet'} />
-                <HeatmapGrid audit={latestFull?.id !== baselineFull?.id ? latestFull : null} title="Latest Audit" subtitle={latestFull?.id !== baselineFull?.id ? new Date(latestFull.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Run an audit to compare'} />
+              {/* Heatmaps side by side */}
+              <div style={{ display: 'flex', gap: 16 }}>
+                <HeatmapGrid
+                  audit={baselineFull}
+                  title="Baseline Audit"
+                  subtitle={baselineFull ? new Date(baselineFull.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No baseline yet'}
+                  business={selectedBiz}
+                />
+                <HeatmapGrid
+                  audit={latestFull?.id !== baselineFull?.id ? latestFull : null}
+                  title="Latest Audit"
+                  subtitle={latestFull?.id !== baselineFull?.id ? new Date(latestFull.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Run another audit to compare'}
+                  business={selectedBiz}
+                />
               </div>
 
-              <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 16 }}>
+              {/* Legend */}
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 12 }}>
                 <span style={{ fontSize: 11, color: 'var(--dim)' }}>Rank:</span>
                 {[{ bg: '#1ec85a', label: '#1–3' }, { bg: '#6bc94a', label: '#4–7' }, { bg: '#c8c020', label: '#8–10' }, { bg: '#e07820', label: '#11–15' }, { bg: '#b01414', label: '16+' }].map(l => (
-                  <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 14, height: 14, borderRadius: 3, background: l.bg }} />
+                  <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div style={{ width: 12, height: 12, borderRadius: 2, background: l.bg }} />
                     <span style={{ fontSize: 11, color: 'var(--dim)' }}>{l.label}</span>
                   </div>
                 ))}
@@ -230,13 +267,14 @@ export default function Reports() {
             </>
           )
         ) : (
+          /* Performance tab */
           <div>
             <div style={{ borderRadius: 16, padding: '20px 28px', background: 'linear-gradient(135deg, rgba(0,200,255,0.1), rgba(123,47,255,0.06))', border: '1px solid rgba(0,200,255,0.2)', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, color: 'var(--nebula-blue)' }}>⏰ Next ranking audit in 30 days</div>
               <button onClick={() => setView('heatmap')} className="btn-primary" style={{ fontSize: 11, padding: '10px 20px' }}>Run Manual Audit →</button>
             </div>
             {selectedBiz && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
                 {(selectedBiz.targetKeywords || []).map((kw, i) => {
                   const kwAudits = (selectedBiz.rankAudits || []).filter(a => a.keyword === kw)
                   const latest = kwAudits[kwAudits.length - 1]
@@ -245,7 +283,7 @@ export default function Reports() {
                   return (
                     <div key={i} style={{ borderRadius: 16, background: 'rgba(232,238,255,0.02)', border: '1px solid var(--border)', padding: '24px' }}>
                       <div style={{ fontSize: 11, color: 'var(--nebula-blue)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>Keyword {i + 1}</div>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, marginBottom: 16 }}>{kw}</div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, marginBottom: 14 }}>{kw}</div>
                       {latest ? (
                         <>
                           <div style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 900, color: 'var(--nebula-blue)', marginBottom: 4 }}>{latest.avgRank}</div>
@@ -266,5 +304,13 @@ export default function Reports() {
       </div>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
+  )
+}
+
+export default function Reports() {
+  return (
+    <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}><div style={{ width: 36, height: 36, border: '3px solid rgba(123,47,255,0.3)', borderTopColor: 'var(--nebula-purple)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>}>
+      <ReportsContent />
+    </Suspense>
   )
 }
