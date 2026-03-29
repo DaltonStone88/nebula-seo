@@ -1,8 +1,25 @@
 'use client'
 import { useState } from 'react'
+import { useBusinessContext } from '../layout'
+import Link from 'next/link'
 
 export default function Reviews() {
+  const { selectedBiz } = useBusinessContext()
   const [filter, setFilter] = useState('new')
+
+  if (!selectedBiz) return (
+    <div>
+      <div style={{ padding: '20px 36px', borderBottom: '1px solid var(--border)', background: 'rgba(6,6,18,0.5)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>Reviews</h1>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '70vh', textAlign: 'center', padding: '0 40px' }}>
+        <div style={{ fontSize: 56, marginBottom: 20 }}>⭐</div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, marginBottom: 10 }}>No Business Selected</div>
+        <p style={{ fontSize: 14, color: 'var(--dim)', marginBottom: 28, maxWidth: 360, lineHeight: 1.7 }}>Add a business to start monitoring reviews. Once your Google Business Profile is connected, reviews will appear here automatically.</p>
+        <Link href="/dashboard/businesses/add" className="btn-primary" style={{ fontSize: 13, padding: '12px 28px' }}>+ Add Your First Business</Link>
+      </div>
+    </div>
+  )
 
   return (
     <div>
