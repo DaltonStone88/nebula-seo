@@ -85,6 +85,19 @@ export default function Home() {
         @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
         @keyframes spin-slow { to{transform:rotate(360deg)} }
         .float-anim { animation: float 4s ease-in-out infinite; }
+        html, body { overflow-x: hidden; max-width: 100vw; }
+        * { box-sizing: border-box; }
+        @media(max-width:900px){
+          .success-tabs { grid-template-columns: 1fr 1fr !important; }
+          .success-before-after { grid-template-columns: 1fr !important; gap: 12px !important; }
+          .success-arrow { display: none !important; }
+          .pricing-cta-features { grid-template-columns: 1fr !important; }
+        }
+        @media(max-width:768px){
+          .success-tabs { grid-template-columns: 1fr 1fr !important; }
+          .hero-heatmap { max-width: 100% !important; overflow: hidden; }
+          .hero-heatmap > div > div { flex-wrap: nowrap; overflow-x: auto; }
+        }
         @media(max-width:1024px){
           .hero-section{padding:120px 32px 60px!important}
           .section-pad{padding:80px 32px!important}
@@ -155,7 +168,7 @@ export default function Home() {
         </div>
 
         {/* Hero heatmap mockup */}
-        <div className="reveal d5 float-anim" style={{ marginTop: 80, position: 'relative', maxWidth: 680, width: '100%' }}>
+        <div className="reveal d5 float-anim" className="hero-heatmap" style={{ marginTop: 80, position: 'relative', maxWidth: 680, width: '100%', overflow: 'hidden' }}>
           <div style={{ borderRadius: 20, border: '1px solid rgba(123,47,255,0.25)', background: 'rgba(6,6,18,0.8)', backdropFilter: 'blur(20px)', overflow: 'hidden', boxShadow: '0 0 80px rgba(123,47,255,0.15), 0 40px 80px rgba(0,0,0,0.5)' }}>
             <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(232,238,255,0.06)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 12, color: 'var(--dim)', fontWeight: 600 }}>📍 Rank Heatmap — "plumber near me" · Austin, TX</span>
@@ -254,7 +267,7 @@ export default function Home() {
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 4vw, 46px)', fontWeight: 900, marginBottom: 14 }}>Real rankings. Real growth.</h2>
             <p style={{ fontSize: 15, color: 'var(--dim)', lineHeight: 1.7 }}>Average rank improvements across active NebulaSEO locations.</p>
           </div>
-          <div className="reveal" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 32 }}>
+          <div className="reveal" className="success-tabs" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 32 }}>
             {successStories.map((s, i) => (
               <div key={i} className="story-tab" onClick={() => setActiveStory(i)} style={{ padding: '16px', borderRadius: 12, border: `1px solid ${activeStory === i ? s.color : 'var(--border)'}`, background: activeStory === i ? `rgba(123,47,255,0.06)` : 'transparent', textAlign: 'center' }}>
                 <div style={{ fontSize: 11, color: 'var(--dim2)', marginBottom: 4 }}>{s.category}</div>
@@ -264,13 +277,13 @@ export default function Home() {
             ))}
           </div>
           <div className="reveal" style={{ padding: '40px 48px', borderRadius: 20, background: 'rgba(232,238,255,0.02)', border: `1px solid ${successStories[activeStory].color.replace('var(', '').replace(')', '')}22` || 'var(--border)' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 1fr', gap: 32, alignItems: 'center' }}>
+            <div className="success-before-after" style={{ display: 'grid', gridTemplateColumns: '1fr 80px 1fr', gap: 32, alignItems: 'center' }}>
               <div style={{ textAlign: 'center', padding: '32px', borderRadius: 16, background: 'rgba(255,80,80,0.06)', border: '1px solid rgba(255,80,80,0.2)' }}>
                 <div style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(255,80,80,0.8)', marginBottom: 12 }}>Before NebulaSEO</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 52, fontWeight: 900, color: 'rgba(255,100,100,0.9)', marginBottom: 6 }}>#{successStories[activeStory].before}</div>
                 <div style={{ fontSize: 12, color: 'var(--dim)' }}>Average rank across service area</div>
               </div>
-              <div style={{ textAlign: 'center' }}>
+              <div className="success-arrow" style={{ textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 900, color: 'var(--nebula-gold)' }}>{successStories[activeStory].change}</div>
                 <div style={{ fontSize: 24 }}>→</div>
               </div>
@@ -322,7 +335,7 @@ export default function Home() {
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: 3, color: 'var(--nebula-blue)', marginBottom: 16, textTransform: 'uppercase' }}>Simple Pricing</div>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 900, marginBottom: 12 }}>$79<span style={{ fontSize: '0.4em', fontWeight: 400, color: 'var(--dim)' }}>/mo per location</span></h2>
             <p style={{ fontSize: 15, color: 'var(--dim)', marginBottom: 40, lineHeight: 1.7, maxWidth: 480, margin: '0 auto 40px' }}>One price. All features. No upsells. Cancel any location anytime.</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginBottom: 44, textAlign: 'left' }}>
+            <div className="pricing-cta-features" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 44, textAlign: 'left' }}>
               {[
                 'Monthly rank audits + heatmaps',
                 '10 AI-generated GBP posts/month',
