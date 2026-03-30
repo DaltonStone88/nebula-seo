@@ -118,8 +118,12 @@ model Business {
   stripeSubscriptionId  String?
   stripeCurrentPeriodEnd DateTime?
   cancelAtPeriodEnd     Boolean  @default(false)
-  discountUsed          Boolean  @default(false)  // one-time 10% off offer
-  pauseUsed             Boolean  @default(false)  // one-time 30-day pause offer
+  discountUsed          Boolean  @default(false)
+  pauseUsed             Boolean  @default(false)
+
+  // Post generation schedule
+  billingDay            Int?     // day of month they signed up (1-28)
+  lastPostGeneratedAt   DateTime?
 
   // Relations
   userId      String
