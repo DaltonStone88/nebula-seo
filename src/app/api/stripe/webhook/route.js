@@ -4,6 +4,11 @@ import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
+// Generate a short unique referral code
+function generateReferralCode() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase()
+}
+
 export async function POST(req) {
   const body = await req.text()
   const sig = req.headers.get('stripe-signature')
@@ -60,6 +65,32 @@ export async function POST(req) {
           metadata: { ...subscription.metadata, businessId: business.id },
         })
 
+        // Credit referral commission if this user was referred
+        try {
+          const user = await prisma.user.findUnique({ where: { id: userId } })
+          if (user?.referredById) {
+            const month = new Date().toISOString().slice(0, 7) // "2026-03"
+            // Check if commission already exists for this business+month
+            const existing = await prisma.referralCommission.findFirst({
+              where: { referredUserId: userId, businessId: business.id, month },
+            })
+            if (!existing) {
+              await prisma.referralCommission.create({
+                data: {
+                  referrerId: user.referredById,
+                  referredUserId: userId,
+                  businessId: business.id,
+                  amount: 15.80, // 20% of $79
+                  month,
+                  status: 'AVAILABLE',
+                },
+              })
+            }
+          }
+        } catch (commErr) {
+          console.error('Commission credit error:', commErr)
+        }
+
         console.log('Business created after payment:', business.id)
         break
       }
@@ -88,6 +119,40 @@ export async function POST(req) {
         // Subscription fully ended — delete the business and all its data
         await prisma.business.delete({ where: { id: businessId } })
         console.log('Business deleted after subscription ended:', businessId)
+        break
+      }
+
+      case 'invoice.paid': {
+        const invoice = event.data.object
+        // Only process subscription renewals (not first payment — that's handled by checkout.session.completed)
+        if (!invoice.subscription || invoice.billing_reason !== 'subscription_cycle') break
+        const subId = invoice.subscription
+        const business = await prisma.business.findFirst({ where: { stripeSubscriptionId: subId } })
+        if (!business) break
+        // Credit recurring commission if the business owner was referred
+        try {
+          const user = await prisma.user.findUnique({ where: { id: business.userId } })
+          if (user?.referredById) {
+            const month = new Date().toISOString().slice(0, 7)
+            const existing = await prisma.referralCommission.findFirst({
+              where: { referredUserId: business.userId, businessId: business.id, month },
+            })
+            if (!existing) {
+              await prisma.referralCommission.create({
+                data: {
+                  referrerId: user.referredById,
+                  referredUserId: business.userId,
+                  businessId: business.id,
+                  amount: 15.80,
+                  month,
+                  status: 'AVAILABLE',
+                },
+              })
+            }
+          }
+        } catch (commErr) {
+          console.error('Recurring commission error:', commErr)
+        }
         break
       }
 
