@@ -3,48 +3,51 @@ import { NextResponse } from 'next/server'
 
 export const maxDuration = 300
 
-// This runs on the 1st of every month at 6am UTC
-// Configured in vercel.json
+// Runs daily at 6am UTC — generates posts for businesses whose billing day matches today
 export async function GET(req) {
-  // Verify this is coming from Vercel cron
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    // Get businesses whose last post generation was 28+ days ago (or never)
-    const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() - 28)
+    const today = new Date()
+    const todayDay = today.getDate()
+
+    // Get all active businesses where today matches their billing day
+    // Also handle end-of-month: if billing day is 29/30/31 and today is last day of month
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+    const isLastDay = todayDay === lastDayOfMonth
 
     const businesses = await prisma.business.findMany({
-      where: { status: 'ACTIVE' },
+      where: {
+        status: 'ACTIVE',
+        OR: [
+          { billingDay: todayDay },
+          // If today is last day of month, also generate for businesses with billingDay > lastDayOfMonth
+          ...(isLastDay ? [{ billingDay: { gt: lastDayOfMonth } }] : []),
+          // Fallback: businesses with no billingDay set, use old 28-day logic
+          {
+            billingDay: null,
+            OR: [
+              { lastPostGeneratedAt: null },
+              { lastPostGeneratedAt: { lt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000) } },
+            ]
+          }
+        ]
+      },
       select: { id: true, name: true, userId: true },
     })
 
-    // Filter to only businesses that need generation
-    const businessesNeedingGeneration = []
-    for (const biz of businesses) {
-      const lastPost = await prisma.automationPost.findFirst({
-        where: { businessId: biz.id },
-        orderBy: { createdAt: 'desc' },
-        select: { createdAt: true },
-      })
-      if (!lastPost || lastPost.createdAt < cutoff) {
-        businessesNeedingGeneration.push(biz)
-      }
-    }
-    const businesses_to_process = businessesNeedingGeneration
-
     const results = []
-    for (const business of businesses_to_process) {
+    const baseUrl = process.env.NEXTAUTH_URL || 'https://www.nebulaseo.com'
+
+    for (const business of businesses) {
       try {
-        const baseUrl = process.env.NEXTAUTH_URL || 'https://www.nebulaseo.com'
         const res = await fetch(`${baseUrl}/api/automation/generate`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            // Pass a special header to bypass session auth for cron
             'x-cron-secret': process.env.CRON_SECRET || '',
           },
           body: JSON.stringify({ businessId: business.id, fromCron: true }),
@@ -56,8 +59,7 @@ export async function GET(req) {
       }
     }
 
-    console.log('Cron automation results:', results)
-    return NextResponse.json({ success: true, processed: results.length, skipped: businesses.length - businesses_to_process.length, results })
+    return NextResponse.json({ success: true, date: todayDay, processed: results.length, results })
   } catch (e) {
     console.error('Cron error:', e)
     return NextResponse.json({ error: e.message }, { status: 500 })
