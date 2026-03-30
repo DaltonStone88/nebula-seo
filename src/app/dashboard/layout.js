@@ -185,7 +185,7 @@ function OnboardingModal({ onClose, userName }) {
 }
 
 // ── Business context ──────────────────────────────────────────────────────────
-export const BusinessContext = createContext({ businesses: [], selectedBiz: null, setSelectedBiz: () => {} })
+export const BusinessContext = createContext({ businesses: [], setBusinesses: () => {}, selectedBiz: null, setSelectedBiz: () => {}, refreshBusinesses: () => {} })
 export function useBusinessContext() { return useContext(BusinessContext) }
 
 const navItems = [
@@ -231,17 +231,19 @@ export default function DashboardLayout({ children }) {
       .catch(() => {})
   }, [])
 
-  useEffect(() => {
+  const loadBusinesses = () => {
     fetch('/api/businesses')
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
           setBusinesses(data)
-          setSelectedBiz(data[0])
+          setSelectedBiz(prev => prev || data[0])
         }
       })
       .catch(e => console.error('Layout: failed to load businesses', e))
-  }, [])
+  }
+
+  useEffect(() => { loadBusinesses() }, [])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -253,7 +255,7 @@ export default function DashboardLayout({ children }) {
   const initials = selectedBiz ? selectedBiz.name.slice(0, 2).toUpperCase() : '??'
 
   return (
-    <BusinessContext.Provider value={{ businesses, selectedBiz, setSelectedBiz }}>
+    <BusinessContext.Provider value={{ businesses, setBusinesses, selectedBiz, setSelectedBiz, refreshBusinesses: loadBusinesses }}>
       <style>{`
         .dash-main { overflow-x: hidden !important; }
         .dash-main > * { max-width: 100%; }
