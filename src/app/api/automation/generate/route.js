@@ -345,6 +345,12 @@ export async function POST(req) {
     // Save all posts
     await prisma.automationPost.createMany({ data: generatedPosts })
 
+    // Update lastPostGeneratedAt on the business
+    await prisma.business.update({
+      where: { id: businessId },
+      data: { lastPostGeneratedAt: new Date() },
+    })
+
     // Log automation activity
     await prisma.automation.create({
       data: {
