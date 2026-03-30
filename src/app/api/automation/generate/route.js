@@ -278,71 +278,50 @@ export async function POST(req) {
     // Shuffle pairs so keyword/city combos are spread throughout the month
     pairs.sort(() => Math.random() - 0.5)
 
-    const generatedPosts = []
+    // Build configs then generate all in parallel for speed
+    const postConfigs = []
     let imageIndex = 0
-
     for (let i = 0; i < POST_COUNT; i++) {
       const type = postTypes[i]
       const { keyword, city } = pairs[i]
       const scheduledFor = schedDates[i] || new Date()
-
-      // Pick relevant content
-      const offer = type === 'OFFER' && business.offers.length > 0
-        ? business.offers[i % business.offers.length]
-        : null
-      const event = type === 'EVENT' && business.events.length > 0
-        ? business.events[i % business.events.length]
-        : null
-      const update = type === 'WHATS_NEW' && business.updates.length > 0
-        ? business.updates[i % business.updates.length]
-        : null
-
-      // Pick image (round robin)
-      const image = business.images.length > 0
-        ? business.images[imageIndex % business.images.length]
-        : null
+      const offer = type === 'OFFER' && business.offers.length > 0 ? business.offers[i % business.offers.length] : null
+      const event = type === 'EVENT' && business.events.length > 0 ? business.events[i % business.events.length] : null
+      const update = type === 'WHATS_NEW' && business.updates.length > 0 ? business.updates[i % business.updates.length] : null
+      const image = business.images.length > 0 ? business.images[imageIndex % business.images.length] : null
+      const imgIdx = business.images.length > 0 ? (imageIndex % business.images.length) : null
       if (business.images.length > 0) imageIndex++
+      postConfigs.push({ i, type, keyword, city, scheduledFor, offer, event, update, image, imgIdx })
+    }
 
-      // Generate content
+    const generatedPosts = await Promise.all(postConfigs.map(async ({ i, type, keyword, city, scheduledFor, offer, event, update, image, imgIdx }) => {
       let content
       try {
-        content = await generatePost({ type, business, keyword, city, offer, event, update })
+        content = await generatePost({ type, business, keyword, city, offer, event, update, postIndex: i })
       } catch (e) {
         console.error('Generation failed for post', i, e)
-        content = `Visit ${business.name} in ${city} for professional ${keyword} services. Contact us today to learn more about how we can help you.`
+        try {
+          content = await generatePost({ type, business, keyword, city, offer, event, update, postIndex: i + 5 })
+        } catch (e2) {
+          content = '[Generation failed — please edit this post before approving]'
+        }
       }
-
       const postData = {
-        businessId,
-        content,
-        postType: type,
-        keyword,
-        city,
-        scheduledFor,
-        status: 'PENDING',
-        imageUrl: image?.url || null,
-        imageIndex: image ? (imageIndex - 1) % business.images.length : null,
+        businessId, content, postType: type, keyword, city, scheduledFor,
+        status: 'PENDING', imageUrl: image?.url || null, imageIndex: imgIdx,
       }
-
-      // Add type-specific fields
       if (offer) {
-        postData.offerTitle = offer.title
-        postData.offerCode = offer.couponCode
-        postData.offerUrl = offer.redeemUrl
-        postData.offerTerms = offer.terms
-        postData.offerStart = offer.startDate
-        postData.offerEnd = offer.endDate
+        postData.offerTitle = offer.title; postData.offerCode = offer.couponCode
+        postData.offerUrl = offer.redeemUrl; postData.offerTerms = offer.terms
+        postData.offerStart = offer.startDate; postData.offerEnd = offer.endDate
       }
       if (event) {
         postData.eventTitle = event.title
-        postData.eventStart = event.startDate
-        postData.eventEnd = event.endDate
+        postData.eventStart = event.startDate; postData.eventEnd = event.endDate
       }
+      return postData
+    }))
 
-      generatedPosts.push(postData)
-    }
-
-    // Save all posts
     await prisma.automationPost.createMany({ data: generatedPosts })
 
     // Update lastPostGeneratedAt on the business
