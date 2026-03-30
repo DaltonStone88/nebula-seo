@@ -9,7 +9,7 @@
       "maxDuration": 60
     },
     "src/app/api/automation/generate/route.js": {
-      "maxDuration": 60
+      "maxDuration": 300
     },
     "src/app/api/cron/automation/route.js": {
       "maxDuration": 300
