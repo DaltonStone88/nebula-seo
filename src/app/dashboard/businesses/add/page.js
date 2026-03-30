@@ -1,9 +1,11 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useBusinessContext } from '../layout'
 
 export default function AddBusiness() {
   const router = useRouter()
+  const { refreshBusinesses, setSelectedBiz } = useBusinessContext()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [selected, setSelected] = useState(null)
@@ -161,6 +163,18 @@ export default function AddBusiness() {
       } catch (e) { console.error('Post generation failed:', e) }
       setPostsGenerating(false)
       setAllDone(true)
+
+      // Refresh sidebar so new business appears immediately
+      try {
+        const bizRes = await fetch('/api/businesses')
+        const bizData = await bizRes.json()
+        if (Array.isArray(bizData) && bizData.length > 0) {
+          refreshBusinesses()
+          // Select the newly created business
+          const newBiz = bizData.find(b => b.id === data.businessId)
+          if (newBiz) setSelectedBiz(newBiz)
+        }
+      } catch (e) { console.error('Failed to refresh businesses', e) }
 
     } catch (e) { setPaymentError(e.message); setPaying(false) }
   }
