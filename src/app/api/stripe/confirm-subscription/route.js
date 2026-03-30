@@ -68,6 +68,8 @@ export async function POST(req) {
           status: 'ACTIVE',
           stripeSubscriptionId: subscription.id,
           stripeCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
+          billingDay: Math.min(new Date().getDate(), 28), // cap at 28 to handle Feb
+          lastPostGeneratedAt: new Date(),
         },
       })
 
