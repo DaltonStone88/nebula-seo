@@ -3,11 +3,27 @@ import GoogleProvider from 'next-auth/providers/google'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 
+function generateReferralCode() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase()
+}
+
 function CustomPrismaAdapter(p) {
   const adapter = PrismaAdapter(p)
   return {
     ...adapter,
     linkAccount: ({ refresh_token_expires_in, ...account }) => adapter.linkAccount(account),
+    createUser: async (data) => {
+      // Generate unique referral code on user creation
+      let code = generateReferralCode()
+      let attempts = 0
+      while (attempts < 10) {
+        const exists = await p.user.findUnique({ where: { referralCode: code } })
+        if (!exists) break
+        code = generateReferralCode()
+        attempts++
+      }
+      return adapter.createUser({ ...data, referralCode: code })
+    },
   }
 }
 
