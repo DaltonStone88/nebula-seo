@@ -67,10 +67,24 @@ model User {
   stripeCustomerId     String?   @unique
   stripeSubscriptionId String?   @unique
 
+  // Referral
+  referralCode  String?   @unique
+  referredById  String?   // userId of who referred them
+  referredBy    User?     @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals     User[]    @relation("Referrals")
+
+  // Payout / bank
+  plaidAccessToken     String?   @db.Text
+  plaidAccountId       String?
+  plaidBankName        String?
+  plaidAccountMask     String?
+
   // Relations
   accounts      Account[]
   sessions      Session[]
   businesses    Business[]
+  commissions   ReferralCommission[]
+  withdrawals   WithdrawalRequest[]
 }
 
 model Business {
@@ -294,6 +308,44 @@ model BusinessImage {
   business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 }
 
+// ─── Referral & Commission Models ────────────────────────────────────────────
+
+model ReferralCommission {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+
+  referrerId    String
+  referrer      User     @relation(fields: [referrerId], references: [id], onDelete: Cascade)
+
+  referredUserId String
+  businessId    String?  // which business triggered this commission
+  amount        Float    // e.g. 15.80 (20% of $79)
+  month         String   // e.g. "2026-03" — billing month this covers
+  status        CommissionStatus @default(PENDING)
+  paidOut       Boolean  @default(false)
+  withdrawalId  String?
+}
+
+model WithdrawalRequest {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  amount        Float
+  status        WithdrawalStatus @default(PENDING)
+  adminNote     String?  @db.Text
+
+  // Plaid payout info
+  plaidAccountId   String?
+  plaidBankName    String?
+  plaidAccountMask String?
+
+  processedAt   DateTime?
+}
+
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
 enum Plan {
@@ -335,5 +387,18 @@ enum AutomationPostStatus {
   APPROVED
   PUBLISHED
   FAILED
+  REJECTED
+}
+
+enum CommissionStatus {
+  PENDING
+  AVAILABLE
+  WITHDRAWN
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  PAID
   REJECTED
 }
