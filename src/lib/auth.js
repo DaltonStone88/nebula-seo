@@ -60,7 +60,9 @@ export const authOptions = {
       return session
     },
     async redirect({ url, baseUrl }) {
-      return 'https://www.nebulaseo.com/dashboard'
+      if (url.startsWith('/')) return `${baseUrl}${url}`
+      if (url.startsWith(baseUrl)) return url
+      return `${baseUrl}/dashboard`
     },
   },
   pages: {
