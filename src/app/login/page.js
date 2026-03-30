@@ -16,8 +16,8 @@ function LoginForm() {
     setLoading(true)
     // Pass ref code through callbackUrl so we can process it post-login
     const callbackUrl = refCode
-      ? `https://www.nebulaseo.com/api/referral/apply?ref=${refCode}&next=/dashboard`
-      : 'https://www.nebulaseo.com/dashboard'
+      ? `/api/referral/apply?ref=${refCode}&next=/dashboard`
+      : '/dashboard'
     signIn('google', { callbackUrl })
   }
 
