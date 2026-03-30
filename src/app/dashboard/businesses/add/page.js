@@ -146,27 +146,30 @@ export default function AddBusiness() {
       setStep(5)
       setAuditProgress(filteredKeywords.map(kw => ({ keyword: kw, done: false, error: false })))
 
-      // Save boost content if provided
+      // Save boost content BEFORE running audits/generation so AI has context
+      const boostSaves = []
       if (boostOffer.trim()) {
-        fetch('/api/automation/content', {
+        boostSaves.push(fetch('/api/automation/content', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ type: 'offer', businessId: data.businessId, title: boostOffer.trim(), description: boostOffer.trim() }),
-        }).catch(() => {})
+        }))
       }
       if (boostUpdate.trim()) {
-        fetch('/api/automation/content', {
+        boostSaves.push(fetch('/api/automation/content', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ type: 'update', businessId: data.businessId, content: boostUpdate.trim() }),
-        }).catch(() => {})
+        }))
       }
-      // Upload images if provided
       if (boostImages.length > 0) {
         for (const img of boostImages) {
           const formData = new FormData()
           formData.append('file', img.file)
           formData.append('businessId', data.businessId)
-          fetch('/api/automation/images', { method: 'POST', body: formData }).catch(() => {})
+          boostSaves.push(fetch('/api/automation/images', { method: 'POST', body: formData }))
         }
+      }
+      if (boostSaves.length > 0) {
+        await Promise.all(boostSaves).catch(() => {})
       }
 
       for (let i = 0; i < filteredKeywords.length; i++) {
