@@ -8,12 +8,17 @@ import Starfield from '../../components/Starfield'
 function LoginForm() {
   const searchParams = useSearchParams()
   const defaultSignup = searchParams.get('signup') === 'true'
+  const refCode = searchParams.get('ref') || ''
   const [isSignup, setIsSignup] = useState(defaultSignup)
   const [loading, setLoading] = useState(false)
 
   const handleGoogle = () => {
     setLoading(true)
-    signIn('google', { callbackUrl: 'https://www.nebulaseo.com/dashboard' })
+    // Pass ref code through callbackUrl so we can process it post-login
+    const callbackUrl = refCode
+      ? `https://www.nebulaseo.com/api/referral/apply?ref=${refCode}&next=/dashboard`
+      : 'https://www.nebulaseo.com/dashboard'
+    signIn('google', { callbackUrl })
   }
 
   return (
