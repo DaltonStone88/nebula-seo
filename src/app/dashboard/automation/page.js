@@ -352,6 +352,13 @@ export default function Automation() {
     loadData()
   }, [selectedBiz?.id])
 
+  // Also reload when tab becomes visible (handles navigation back from add business)
+  useEffect(() => {
+    const onFocus = () => { if (selectedBiz?.id) loadData() }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [selectedBiz?.id])
+
   const loadData = async () => {
     setLoading(true)
     try {
