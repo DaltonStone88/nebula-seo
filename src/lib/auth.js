@@ -13,14 +13,17 @@ function CustomPrismaAdapter(p) {
     ...adapter,
     linkAccount: ({ refresh_token_expires_in, ...account }) => adapter.linkAccount(account),
     createUser: async (data) => {
-      // Generate unique referral code on user creation
       let code = generateReferralCode()
-      let attempts = 0
-      while (attempts < 10) {
-        const exists = await p.user.findUnique({ where: { referralCode: code } })
-        if (!exists) break
-        code = generateReferralCode()
-        attempts++
+      try {
+        let attempts = 0
+        while (attempts < 10) {
+          const exists = await p.user.findUnique({ where: { referralCode: code } })
+          if (!exists) break
+          code = generateReferralCode()
+          attempts++
+        }
+      } catch (e) {
+        console.error('Referral code gen error:', e)
       }
       return adapter.createUser({ ...data, referralCode: code })
     },
