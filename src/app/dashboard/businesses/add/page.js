@@ -10,10 +10,16 @@ export default function AddBusiness() {
   const [results, setResults] = useState([])
   const [selected, setSelected] = useState(null)
   const [searching, setSearching] = useState(false)
-  const [step, setStep] = useState(1) // 1=search, 2=keywords, 3=payment, 4=running
+  const [step, setStep] = useState(1) // 1=search, 2=keywords, 3=boost, 4=payment, 5=running
 
   const [keywords, setKeywords] = useState(['', ''])
   const [cities, setCities] = useState(['', '', '', '', '', '', ''])
+
+  // Boost state (step 3)
+  const [boostOffer, setBoostOffer] = useState('')
+  const [boostUpdate, setBoostUpdate] = useState('')
+  const [boostImages, setBoostImages] = useState([])
+  const [uploadingImages, setUploadingImages] = useState(false)
 
   // Payment state
   const [stripeLoaded, setStripeLoaded] = useState(false)
@@ -47,7 +53,7 @@ export default function AddBusiness() {
 
   // Mount card element when we enter step 3
   useEffect(() => {
-    if (step !== 3 || !stripeLoaded || !clientSecret || !cardRef.current) return
+    if (step !== 4 || !stripeLoaded || !clientSecret || !cardRef.current) return
 
     const stripe = window.Stripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
     setStripeInstance(stripe)
@@ -97,7 +103,7 @@ export default function AddBusiness() {
       const data = await res.json()
       if (data.error) { alert('Error: ' + data.error); return }
       setClientSecret(data.clientSecret)
-      setStep(3)
+      setStep(3) // go to boost step first, then payment
     } catch (e) { alert('Error: ' + e.message) }
   }
 
@@ -135,10 +141,33 @@ export default function AddBusiness() {
         if (actionError) { setPaymentError(actionError.message); setPaying(false); return }
       }
 
-      // Payment succeeded — move to step 4 and run everything
+      // Payment succeeded — move to step 5 and run everything
       setPaying(false)
-      setStep(4)
+      setStep(5)
       setAuditProgress(filteredKeywords.map(kw => ({ keyword: kw, done: false, error: false })))
+
+      // Save boost content if provided
+      if (boostOffer.trim()) {
+        fetch('/api/automation/content', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'offer', businessId: data.businessId, title: boostOffer.trim(), description: boostOffer.trim() }),
+        }).catch(() => {})
+      }
+      if (boostUpdate.trim()) {
+        fetch('/api/automation/content', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'update', businessId: data.businessId, content: boostUpdate.trim() }),
+        }).catch(() => {})
+      }
+      // Upload images if provided
+      if (boostImages.length > 0) {
+        for (const img of boostImages) {
+          const formData = new FormData()
+          formData.append('file', img.file)
+          formData.append('businessId', data.businessId)
+          fetch('/api/automation/images', { method: 'POST', body: formData }).catch(() => {})
+        }
+      }
 
       for (let i = 0; i < filteredKeywords.length; i++) {
         try {
@@ -179,12 +208,12 @@ export default function AddBusiness() {
     } catch (e) { setPaymentError(e.message); setPaying(false) }
   }
 
-  const steps = ['Find Business', 'Keywords & Cities', 'Payment']
+  const steps = ['Find Business', 'Keywords & Cities', 'Boost Posts', 'Payment']
 
   return (
     <div>
       <div style={{ padding: '20px 36px', borderBottom: '1px solid var(--border)', background: 'rgba(6,6,18,0.5)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50, display: 'flex', alignItems: 'center', gap: 16 }}>
-        {step < 4 && (
+        {step < 5 && (
           <button onClick={() => step === 1 ? router.back() : setStep(s => s - 1)} style={{ background: 'none', border: 'none', color: 'var(--dim)', cursor: 'pointer', fontSize: 20, padding: 0, lineHeight: 1 }}>←</button>
         )}
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>Add a Business</h1>
@@ -192,7 +221,7 @@ export default function AddBusiness() {
 
       <div style={{ padding: '48px 36px', maxWidth: 680, margin: '0 auto' }}>
 
-        {step < 4 && (
+        {step < 5 && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 48 }}>
             {steps.map((s, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -299,7 +328,93 @@ export default function AddBusiness() {
         )}
 
         {/* STEP 3 — Payment */}
+        {/* STEP 3 — Boost Posts */}
         {step === 3 && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
+              <div>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Help the AI write better posts</h2>
+                <p style={{ fontSize: 14, color: 'var(--dim)', lineHeight: 1.6 }}>Optional — the more context you give, the more specific and effective your posts will be.</p>
+              </div>
+              <button onClick={() => setStep(4)} style={{ background: 'none', border: 'none', color: 'var(--dim)', cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap', flexShrink: 0, marginLeft: 20 }}>
+                Skip for now →
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Offer */}
+              <div style={{ padding: '24px', borderRadius: 14, background: 'rgba(232,238,255,0.02)', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                  <span style={{ fontSize: 20 }}>🏷️</span>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>Current Offer or Promotion</div>
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--dim)', marginBottom: 14 }}>e.g. "10% off first service", "Free estimate this month", "Summer HVAC tune-up special"</p>
+                <textarea
+                  value={boostOffer}
+                  onChange={e => setBoostOffer(e.target.value)}
+                  placeholder="Describe any current offers or promotions..."
+                  style={{ width: '100%', minHeight: 90, padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'rgba(232,238,255,0.04)', color: 'var(--star-white)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+                  onFocus={e => e.target.style.borderColor = 'rgba(123,47,255,0.5)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                />
+              </div>
+
+              {/* Update */}
+              <div style={{ padding: '24px', borderRadius: 14, background: 'rgba(232,238,255,0.02)', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                  <span style={{ fontSize: 20 }}>📝</span>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>What's New With Your Business</div>
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--dim)', marginBottom: 14 }}>e.g. "We now offer emergency same-day service", "Just added a new technician", "Expanded to 3 new cities"</p>
+                <textarea
+                  value={boostUpdate}
+                  onChange={e => setBoostUpdate(e.target.value)}
+                  placeholder="Any recent updates, new services, or noteworthy news..."
+                  style={{ width: '100%', minHeight: 90, padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'rgba(232,238,255,0.04)', color: 'var(--star-white)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+                  onFocus={e => e.target.style.borderColor = 'rgba(123,47,255,0.5)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                />
+              </div>
+
+              {/* Images */}
+              <div style={{ padding: '24px', borderRadius: 14, background: 'rgba(232,238,255,0.02)', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                  <span style={{ fontSize: 20 }}>🖼️</span>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>Upload Images</div>
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--dim)', marginBottom: 14 }}>You'll need at least one image to approve posts. Upload them now to hit the ground running.</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 10 }}>
+                  {boostImages.map((img, i) => (
+                    <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', aspectRatio: '1', border: '1px solid var(--border)' }}>
+                      <img src={img.preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button onClick={() => setBoostImages(prev => prev.filter((_, j) => j !== i))} style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: '50%', background: 'rgba(255,50,50,0.85)', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>x</button>
+                    </div>
+                  ))}
+                  <label style={{ borderRadius: 8, border: '2px dashed rgba(123,47,255,0.35)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, cursor: 'pointer', aspectRatio: '1', background: 'rgba(123,47,255,0.03)' }}>
+                    <span style={{ fontSize: 20, color: 'var(--nebula-purple)' }}>{uploadingImages ? '...' : '+'}</span>
+                    <span style={{ fontSize: 10, color: 'var(--dim)' }}>Add</span>
+                    <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => {
+                      const files = Array.from(e.target.files)
+                      files.forEach(file => {
+                        const reader = new FileReader()
+                        reader.onload = ev => setBoostImages(prev => [...prev, { file, preview: ev.target.result }])
+                        reader.readAsDataURL(file)
+                      })
+                      e.target.value = ''
+                    }} />
+                  </label>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--dim2)', marginTop: 10 }}>Images will be uploaded after payment and used in rotation across your posts.</div>
+              </div>
+            </div>
+
+            <button onClick={() => setStep(4)} className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '16px', fontSize: 14, marginTop: 24 }}>
+              Continue to Payment →
+            </button>
+          </div>
+        )}
+
+        {step === 4 && (
           <div>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Complete your subscription</h2>
             <p style={{ fontSize: 14, color: 'var(--dim)', marginBottom: 32, lineHeight: 1.6 }}>Your first rank audit and AI-generated posts start automatically after payment.</p>
@@ -357,7 +472,7 @@ export default function AddBusiness() {
         )}
 
         {/* STEP 4 — Running */}
-        {step === 4 && (
+        {step === 5 && (
           <div style={{ textAlign: 'center', paddingTop: 20 }}>
             <div style={{ fontSize: 48, marginBottom: 20 }}>{allDone ? '🎉' : '🚀'}</div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
