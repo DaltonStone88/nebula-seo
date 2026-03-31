@@ -140,7 +140,7 @@ export default function Referral() {
 
   if (loading) return (
     <div>
-      <div style={{ padding: '22px 36px', borderBottom: '1px solid var(--border)', background: 'rgba(6,6,18,0.5)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50, minHeight: 76 }}>
+      <div style={{ padding: '20px 36px', borderBottom: '1px solid var(--border)', background: 'rgba(6,6,18,0.5)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50,  }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>Referrals</h1>
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
@@ -155,7 +155,7 @@ export default function Referral() {
 
   return (
     <div>
-      <div style={{ padding: '22px 36px', borderBottom: '1px solid var(--border)', background: 'rgba(6,6,18,0.5)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50, minHeight: 76 }}>
+      <div style={{ padding: '20px 36px', borderBottom: '1px solid var(--border)', background: 'rgba(6,6,18,0.5)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50,  }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>Referrals</h1>
       </div>
 
