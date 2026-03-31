@@ -282,9 +282,8 @@ export default function DashboardLayout({ children }) {
           flexShrink: 0, overflow: isMobile && !mobileOpen ? 'hidden' : 'visible',
           background: 'rgba(6,6,18,0.97)', borderRight: '1px solid var(--border)',
           display: 'flex', flexDirection: 'column',
-          position: isMobile ? 'fixed' : 'sticky', top: 0, height: '100vh',
+          position: 'fixed', top: 0, left: 0, height: '100vh',
           backdropFilter: 'blur(20px)', transition: 'width 0.3s ease', zIndex: 100,
-          left: 0,
         }}>
           {/* Logo */}
           <div style={{ padding: '22px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
@@ -412,7 +411,7 @@ export default function DashboardLayout({ children }) {
         </aside>
 
         {/* MAIN */}
-        <main className="dash-main" style={{ flex: 1, overflowX: 'hidden', overflowY: 'auto', position: 'relative', zIndex: 1, minWidth: 0 }}>
+        <main className="dash-main" style={{ flex: 1, overflowX: 'hidden', overflowY: 'auto', position: 'relative', zIndex: 1, minWidth: 0, marginLeft: isMobile ? 0 : (collapsed ? 68 : 220), transition: 'margin-left 0.3s ease', minHeight: '100vh' }}>
           {isMobile && (
             <button onClick={() => setMobileOpen(!mobileOpen)} style={{ position: 'fixed', top: 16, left: 16, zIndex: 101, width: 40, height: 40, borderRadius: 10, background: 'rgba(6,6,18,0.95)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, cursor: 'pointer', backdropFilter: 'blur(10px)' }}>
               <div style={{ width: 16, height: 2, background: 'var(--star-white)', borderRadius: 1 }} />
