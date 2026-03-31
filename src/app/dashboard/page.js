@@ -173,7 +173,7 @@ export default function Dashboard() {
   return (
     <div>
       {/* Top bar */}
-      <div style={{ padding: '22px 36px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(6,6,18,0.5)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50, minHeight: 76 }}>
+      <div style={{ minHeight: 72, padding: '0 36px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(6,6,18,0.5)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 13, color: 'var(--dim)' }}>Overview for:</span>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--star-white)' }}>
