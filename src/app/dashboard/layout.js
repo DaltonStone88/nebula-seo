@@ -286,7 +286,7 @@ export default function DashboardLayout({ children }) {
           backdropFilter: 'blur(20px)', transition: 'width 0.3s ease', zIndex: 100,
         }}>
           {/* Logo */}
-          <div style={{ padding: '22px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
+          <div style={{ height: 72, padding: '0 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden', flexShrink: 0 }}>
             <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, var(--nebula-purple), var(--nebula-pink))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>🌌</div>
             {!collapsed && <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 14, letterSpacing: 1, background: 'linear-gradient(135deg, var(--nebula-blue), var(--nebula-purple))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', whiteSpace: 'nowrap' }}>NEBULASEO</span>}
           </div>
@@ -411,7 +411,7 @@ export default function DashboardLayout({ children }) {
         </aside>
 
         {/* MAIN */}
-        <main className="dash-main" style={{ flex: 1, overflowX: 'hidden', overflowY: 'auto', position: 'relative', zIndex: 1, minWidth: 0, marginLeft: isMobile ? 0 : (collapsed ? 68 : 220), transition: 'margin-left 0.3s ease', minHeight: '100vh' }}>
+        <main className="dash-main" style={{ flex: 1, overflowX: 'hidden', overflowY: 'auto', position: 'relative', zIndex: 1, minWidth: 0, marginLeft: isMobile ? 0 : (collapsed ? 68 : 220), transition: 'margin-left 0.3s ease', minHeight: '100vh', borderLeft: '1px solid var(--border)' }}>
           {isMobile && (
             <button onClick={() => setMobileOpen(!mobileOpen)} style={{ position: 'fixed', top: 16, left: 16, zIndex: 101, width: 40, height: 40, borderRadius: 10, background: 'rgba(6,6,18,0.95)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, cursor: 'pointer', backdropFilter: 'blur(10px)' }}>
               <div style={{ width: 16, height: 2, background: 'var(--star-white)', borderRadius: 1 }} />
