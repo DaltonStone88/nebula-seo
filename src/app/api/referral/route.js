@@ -38,9 +38,10 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const totalEarned = user.commissions.reduce((sum, c) => sum + c.amount, 0)
-  const availableBalance = user.commissions
-    .filter(c => c.status === 'AVAILABLE' && !c.paidOut)
-    .reduce((sum, c) => sum + c.amount, 0)
+  const totalWithdrawn = user.withdrawals
+    .filter(w => w.status === 'PENDING' || w.status === 'APPROVED' || w.status === 'PAID')
+    .reduce((sum, w) => sum + w.amount, 0)
+  const availableBalance = Math.max(0, totalEarned - totalWithdrawn)
   const pendingWithdrawals = user.withdrawals
     .filter(w => w.status === 'PENDING')
     .reduce((sum, w) => sum + w.amount, 0)
@@ -142,28 +143,12 @@ export async function POST(req) {
       return NextResponse.json({ error: 'You already have a pending withdrawal request' }, { status: 400 })
     }
 
-    // Create withdrawal using raw query to avoid enum issue
+    // Just create the withdrawal request - don't touch commissions until approved/paid
     const withdrawalId = `wr_${Math.random().toString(36).substring(2, 18)}`
     await prisma.$executeRaw`
       INSERT INTO "WithdrawalRequest" ("id", "createdAt", "updatedAt", "userId", "amount", "status", "plaidAccountId", "plaidBankName", "plaidAccountMask")
       VALUES (${withdrawalId}, NOW(), NOW(), ${session.user.id}, ${amount}, 'PENDING', ${user.plaidAccountId || null}, ${user.plaidBankName || null}, ${user.plaidAccountMask || null})
     `
-
-    // Mark commissions as withdrawn up to the requested amount only
-    let remaining = amount
-    for (const commission of user.commissions) {
-      if (remaining <= 0) break
-      if (commission.amount <= remaining) {
-        // Mark entire commission as withdrawn
-        await prisma.$executeRaw`
-          UPDATE "ReferralCommission" 
-          SET status = 'WITHDRAWN', "paidOut" = true, "withdrawalId" = ${withdrawalId}
-          WHERE id = ${commission.id}
-        `
-        remaining = Math.round((remaining - commission.amount) * 100) / 100
-      }
-      // If commission is larger than remaining, leave it — don't partially mark it
-    }
 
     return NextResponse.json({ success: true, withdrawal: { id: withdrawalId } })
   }
