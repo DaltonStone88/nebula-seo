@@ -153,12 +153,16 @@ export async function POST(req) {
     let remaining = amount
     for (const commission of user.commissions) {
       if (remaining <= 0) break
-      await prisma.$executeRaw`
-        UPDATE "ReferralCommission" 
-        SET status = 'WITHDRAWN', "paidOut" = true, "withdrawalId" = ${withdrawalId}
-        WHERE id = ${commission.id}
-      `
-      remaining = Math.round((remaining - commission.amount) * 100) / 100
+      if (commission.amount <= remaining) {
+        // Mark entire commission as withdrawn
+        await prisma.$executeRaw`
+          UPDATE "ReferralCommission" 
+          SET status = 'WITHDRAWN', "paidOut" = true, "withdrawalId" = ${withdrawalId}
+          WHERE id = ${commission.id}
+        `
+        remaining = Math.round((remaining - commission.amount) * 100) / 100
+      }
+      // If commission is larger than remaining, leave it — don't partially mark it
     }
 
     return NextResponse.json({ success: true, withdrawal: { id: withdrawalId } })
