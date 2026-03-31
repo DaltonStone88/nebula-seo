@@ -3,188 +3,175 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
-function isAdmin(session, req) {
-  const adminEmail = process.env.ADMIN_EMAIL || 'stonemdalton@gmail.com'
-  return session?.user?.email === adminEmail
+const ADMIN_EMAIL = 'stonemdalton@gmail.com'
+
+function isAdmin(session) {
+  return session?.user?.email === ADMIN_EMAIL
 }
 
 export async function GET(req) {
   const session = await getServerSession(authOptions)
-  if (!isAdmin(session, req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isAdmin(session)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
   const action = searchParams.get('action')
 
-  // ── Overview stats ─────────────────────────────────────────────────────────
   if (action === 'overview') {
-    const [users, withdrawals, commissions] = await Promise.all([
-      prisma.user.findMany({
+    try {
+      const users = await prisma.user.findMany({
         select: {
           id: true, name: true, email: true, createdAt: true, plan: true,
-          stripeCustomerId: true,
           businesses: {
             select: {
-              id: true, name: true, status: true, stripeSubscriptionId: true,
-              stripeCurrentPeriodEnd: true, cancelAtPeriodEnd: true, createdAt: true,
-              avgRank: true, lastPostGeneratedAt: true,
-              _count: { select: { rankAudits: true, automationPosts: true } }
+              id: true, name: true, status: true, cancelAtPeriodEnd: true,
+              stripeCurrentPeriodEnd: true, avgRank: true, lastPostGeneratedAt: true,
             }
           },
           commissions: {
-            where: { paidOut: false },
-            select: { amount: true, status: true }
+            select: { amount: true, paidOut: true }
           },
           withdrawals: {
-            where: { status: 'PENDING' },
-            select: { amount: true, id: true }
+            select: { id: true, amount: true, status: true, createdAt: true,
+              plaidBankName: true, plaidAccountMask: true,
+              user: { select: { name: true, email: true, plaidAccessToken: true, plaidAccountId: true } }
+            }
           },
           _count: { select: { referrals: true } }
         },
         orderBy: { createdAt: 'desc' }
-      }),
-      prisma.withdrawalRequest.findMany({
-        where: { status: 'PENDING' },
-        include: {
-          user: { select: { name: true, email: true, plaidAccessToken: true, plaidAccountId: true, plaidBankName: true, plaidAccountMask: true } }
+      })
+
+      const now = new Date()
+      const activeBusinesses = users.flatMap(u => u.businesses.filter(b => b.status === 'ACTIVE'))
+      const mrr = activeBusinesses.length * 79
+      const newThisMonth = users.filter(u => {
+        const d = new Date(u.createdAt)
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+      }).length
+      const churnedThisMonth = users.flatMap(u => u.businesses).filter(b =>
+        b.cancelAtPeriodEnd && b.stripeCurrentPeriodEnd && new Date(b.stripeCurrentPeriodEnd) > now
+      ).length
+
+      const allWithdrawals = users.flatMap(u => u.withdrawals)
+      const pendingWithdrawals = allWithdrawals.filter(w => w.status === 'PENDING')
+      const totalOutstanding = users.flatMap(u => u.commissions).filter(c => !c.paidOut).reduce((s, c) => s + c.amount, 0)
+
+      return NextResponse.json({
+        stats: {
+          totalUsers: users.length,
+          activeBusinesses,
+          mrr,
+          newUsersThisMonth: newThisMonth,
+          churnedThisMonth,
+          totalOutstandingBalance: Math.round(totalOutstanding * 100) / 100,
+          pendingWithdrawals: pendingWithdrawals.length,
         },
-        orderBy: { createdAt: 'asc' }
-      }),
-      prisma.referralCommission.aggregate({
-        _sum: { amount: true },
-        where: { paidOut: false },
-      }),
-    ])
-
-    const activeBusinesses = users.flatMap(u => u.businesses.filter(b => b.status === 'ACTIVE'))
-    const mrr = activeBusinesses.length * 79
-    const now = new Date()
-    const newThisMonth = users.filter(u => {
-      const d = new Date(u.createdAt)
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-    }).length
-    const churnedThisMonth = users.flatMap(u => u.businesses).filter(b =>
-      b.cancelAtPeriodEnd && b.stripeCurrentPeriodEnd && new Date(b.stripeCurrentPeriodEnd) > now
-    ).length
-    const totalOutstandingBalance = commissions._sum.amount || 0
-
-    return NextResponse.json({
-      stats: {
-        totalUsers: users.length,
-        activeBusinesses,
-        mrr,
-        newUsersThisMonth: newThisMonth,
-        churnedThisMonth,
-        totalOutstandingBalance: Math.round(totalOutstandingBalance * 100) / 100,
-        pendingWithdrawals: withdrawals.length,
-      },
-      users: users.map(u => ({
-        ...u,
-        activeLocations: u.businesses.filter(b => b.status === 'ACTIVE').length,
-        mrr: u.businesses.filter(b => b.status === 'ACTIVE').length * 79,
-        outstandingBalance: Math.round(u.commissions.filter(c => !c.paidOut).reduce((s, c) => s + c.amount, 0) * 100) / 100,
-        hasPendingWithdrawal: u.withdrawals.length > 0,
-      })),
-      withdrawals,
-    })
-  }
-
-  // ── All businesses ─────────────────────────────────────────────────────────
-  if (action === 'businesses') {
-    const businesses = await prisma.business.findMany({
-      include: {
-        user: { select: { name: true, email: true } },
-        _count: { select: { rankAudits: true, automationPosts: true, reviews: true } }
-      },
-      orderBy: { createdAt: 'desc' }
-    })
-    return NextResponse.json(businesses)
-  }
-
-  // ── Referral tree ──────────────────────────────────────────────────────────
-  if (action === 'referrals') {
-    const commissions = await prisma.referralCommission.findMany({
-      include: {
-        referrer: { select: { name: true, email: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-    })
-    const byReferrer = {}
-    for (const c of commissions) {
-      const key = c.referrerId
-      if (!byReferrer[key]) {
-        byReferrer[key] = {
-          referrer: c.referrer,
-          totalEarned: 0,
-          availableBalance: 0,
-          commissions: [],
-        }
-      }
-      byReferrer[key].totalEarned += c.amount
-      if (!c.paidOut) byReferrer[key].availableBalance += c.amount
-      byReferrer[key].commissions.push(c)
+        users: users.map(u => ({
+          ...u,
+          activeLocations: u.businesses.filter(b => b.status === 'ACTIVE').length,
+          mrr: u.businesses.filter(b => b.status === 'ACTIVE').length * 79,
+          outstandingBalance: Math.round(u.commissions.filter(c => !c.paidOut).reduce((s, c) => s + c.amount, 0) * 100) / 100,
+          hasPendingWithdrawal: u.withdrawals.some(w => w.status === 'PENDING'),
+        })),
+        withdrawals: pendingWithdrawals,
+      })
+    } catch (e) {
+      console.error('Admin overview error:', e)
+      return NextResponse.json({ error: e.message }, { status: 500 })
     }
-    return NextResponse.json(Object.values(byReferrer))
   }
 
-  // ── Automation health ──────────────────────────────────────────────────────
-  if (action === 'automation') {
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-    const businesses = await prisma.business.findMany({
-      select: {
-        id: true, name: true, lastPostGeneratedAt: true, billingDay: true,
-        targetKeywords: true, targetCities: true, status: true,
-        user: { select: { email: true } },
-        _count: { select: { automationPosts: true } }
+  if (action === 'businesses') {
+    try {
+      const businesses = await prisma.business.findMany({
+        include: {
+          user: { select: { name: true, email: true } },
+          _count: { select: { rankAudits: true, automationPosts: true, reviews: true } }
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+      return NextResponse.json(businesses)
+    } catch (e) {
+      return NextResponse.json({ error: e.message }, { status: 500 })
+    }
+  }
+
+  if (action === 'referrals') {
+    try {
+      const commissions = await prisma.referralCommission.findMany({
+        include: { referrer: { select: { name: true, email: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      })
+      const byReferrer = {}
+      for (const c of commissions) {
+        const key = c.referrerId
+        if (!byReferrer[key]) byReferrer[key] = { referrer: c.referrer, totalEarned: 0, availableBalance: 0, commissions: [] }
+        byReferrer[key].totalEarned += c.amount
+        if (!c.paidOut) byReferrer[key].availableBalance += c.amount
+        byReferrer[key].commissions.push(c)
       }
-    })
-    const active = businesses.filter(b => b.status === 'ACTIVE')
-    const flagged = active.filter(b => {
-      const noPostsRecently = !b.lastPostGeneratedAt || new Date(b.lastPostGeneratedAt) < thirtyDaysAgo
-      const noKeywords = !b.targetKeywords?.length
-      const noCities = !b.targetCities?.length
-      return noPostsRecently || noKeywords || noCities
-    })
-    return NextResponse.json({ businesses: active, flagged })
+      return NextResponse.json(Object.values(byReferrer))
+    } catch (e) {
+      return NextResponse.json({ error: e.message }, { status: 500 })
+    }
   }
 
-  // ── Fetch Plaid account/routing for a withdrawal ───────────────────────────
+  if (action === 'automation') {
+    try {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      const businesses = await prisma.business.findMany({
+        select: {
+          id: true, name: true, lastPostGeneratedAt: true, status: true,
+          targetKeywords: true, targetCities: true,
+          user: { select: { email: true } },
+          _count: { select: { automationPosts: true } }
+        }
+      })
+      const active = businesses.filter(b => b.status === 'ACTIVE')
+      const flagged = active.filter(b =>
+        !b.targetKeywords?.length || !b.targetCities?.length ||
+        !b.lastPostGeneratedAt || new Date(b.lastPostGeneratedAt) < thirtyDaysAgo
+      )
+      return NextResponse.json({ businesses: active, flagged })
+    } catch (e) {
+      return NextResponse.json({ error: e.message }, { status: 500 })
+    }
+  }
+
   if (action === 'plaid_numbers') {
-    const withdrawalId = searchParams.get('withdrawalId')
-    if (!withdrawalId) return NextResponse.json({ error: 'withdrawalId required' }, { status: 400 })
+    try {
+      const withdrawalId = searchParams.get('withdrawalId')
+      if (!withdrawalId) return NextResponse.json({ error: 'withdrawalId required' }, { status: 400 })
+      const withdrawal = await prisma.withdrawalRequest.findUnique({
+        where: { id: withdrawalId },
+        include: { user: { select: { plaidAccessToken: true, plaidAccountId: true } } }
+      })
+      if (!withdrawal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      if (!withdrawal.user.plaidAccessToken) return NextResponse.json({ error: 'No Plaid token' }, { status: 400 })
 
-    const withdrawal = await prisma.withdrawalRequest.findUnique({
-      where: { id: withdrawalId },
-      include: { user: { select: { plaidAccessToken: true, plaidAccountId: true } } }
-    })
-    if (!withdrawal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    if (!withdrawal.user.plaidAccessToken) return NextResponse.json({ error: 'No Plaid token for this user' }, { status: 400 })
-
-    const plaidEnv = process.env.PLAID_ENV === 'production' ? 'production' : 'sandbox'
-    const res = await fetch(`https://${plaidEnv}.plaid.com/auth/get`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        client_id: process.env.PLAID_CLIENT_ID,
-        secret: process.env.PLAID_SECRET,
-        access_token: withdrawal.user.plaidAccessToken,
-      }),
-    })
-    const data = await res.json()
-    if (data.error_code) return NextResponse.json({ error: data.error_message }, { status: 400 })
-
-    const account = data.accounts?.find(a => a.account_id === withdrawal.user.plaidAccountId) || data.accounts?.[0]
-    const numbers = data.numbers?.ach?.find(n => n.account_id === account?.account_id)
-
-    return NextResponse.json({
-      accountName: account?.name,
-      accountType: account?.subtype,
-      accountNumber: numbers?.account,
-      routingNumber: numbers?.routing,
-      wireRouting: numbers?.wire_routing,
-      bankName: withdrawal.plaidBankName,
-      mask: withdrawal.plaidAccountMask,
-    })
+      const plaidEnv = process.env.PLAID_ENV === 'production' ? 'production' : 'sandbox'
+      const res = await fetch(`https://${plaidEnv}.plaid.com/auth/get`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: process.env.PLAID_CLIENT_ID,
+          secret: process.env.PLAID_SECRET,
+          access_token: withdrawal.user.plaidAccessToken,
+        }),
+      })
+      const data = await res.json()
+      if (data.error_code) return NextResponse.json({ error: data.error_message }, { status: 400 })
+      const account = data.accounts?.find(a => a.account_id === withdrawal.user.plaidAccountId) || data.accounts?.[0]
+      const numbers = data.numbers?.ach?.find(n => n.account_id === account?.account_id)
+      return NextResponse.json({
+        accountName: account?.name, accountType: account?.subtype,
+        accountNumber: numbers?.account, routingNumber: numbers?.routing,
+        wireRouting: numbers?.wire_routing, bankName: withdrawal.plaidBankName, mask: withdrawal.plaidAccountMask,
+      })
+    } catch (e) {
+      return NextResponse.json({ error: e.message }, { status: 500 })
+    }
   }
 
   return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
@@ -192,52 +179,32 @@ export async function GET(req) {
 
 export async function POST(req) {
   const session = await getServerSession(authOptions)
-  if (!isAdmin(session, req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isAdmin(session)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { action, withdrawalId, userId, adminNote } = await req.json()
+  try {
+    const { action, withdrawalId, userId, adminNote } = await req.json()
 
-  // ── Approve withdrawal ─────────────────────────────────────────────────────
-  if (action === 'approve_withdrawal') {
-    await prisma.withdrawalRequest.update({
-      where: { id: withdrawalId },
-      data: { status: 'APPROVED', adminNote, processedAt: new Date() }
-    })
-    return NextResponse.json({ success: true })
+    if (action === 'approve_withdrawal') {
+      await prisma.withdrawalRequest.update({ where: { id: withdrawalId }, data: { status: 'APPROVED', adminNote, processedAt: new Date() } })
+      return NextResponse.json({ success: true })
+    }
+    if (action === 'mark_paid') {
+      await prisma.withdrawalRequest.update({ where: { id: withdrawalId }, data: { status: 'PAID', processedAt: new Date() } })
+      return NextResponse.json({ success: true })
+    }
+    if (action === 'reject_withdrawal') {
+      await prisma.withdrawalRequest.update({ where: { id: withdrawalId }, data: { status: 'REJECTED', adminNote } })
+      await prisma.referralCommission.updateMany({ where: { withdrawalId }, data: { status: 'AVAILABLE', paidOut: false, withdrawalId: null } })
+      return NextResponse.json({ success: true })
+    }
+    if (action === 'delete_user') {
+      await prisma.user.delete({ where: { id: userId } })
+      return NextResponse.json({ success: true })
+    }
+
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+  } catch (e) {
+    console.error('Admin POST error:', e)
+    return NextResponse.json({ error: e.message }, { status: 500 })
   }
-
-  // ── Mark withdrawal as paid ────────────────────────────────────────────────
-  if (action === 'mark_paid') {
-    await prisma.withdrawalRequest.update({
-      where: { id: withdrawalId },
-      data: { status: 'PAID', processedAt: new Date() }
-    })
-    return NextResponse.json({ success: true })
-  }
-
-  // ── Reject withdrawal ──────────────────────────────────────────────────────
-  if (action === 'reject_withdrawal') {
-    const withdrawal = await prisma.withdrawalRequest.findUnique({ where: { id: withdrawalId } })
-    if (!withdrawal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-
-    await prisma.withdrawalRequest.update({
-      where: { id: withdrawalId },
-      data: { status: 'REJECTED', adminNote }
-    })
-
-    // Re-credit the commissions so the user can withdraw again
-    await prisma.referralCommission.updateMany({
-      where: { withdrawalId },
-      data: { status: 'AVAILABLE', paidOut: false, withdrawalId: null }
-    })
-
-    return NextResponse.json({ success: true })
-  }
-
-  // ── Delete user ────────────────────────────────────────────────────────────
-  if (action === 'delete_user') {
-    await prisma.user.delete({ where: { id: userId } })
-    return NextResponse.json({ success: true })
-  }
-
-  return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
 }
