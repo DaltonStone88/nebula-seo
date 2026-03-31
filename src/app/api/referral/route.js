@@ -132,37 +132,36 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 })
     }
 
-    // Check no pending withdrawal already exists
-    const pendingWithdrawal = await prisma.withdrawalRequest.findFirst({
-      where: { userId: session.user.id, status: 'PENDING' },
-    })
-    if (pendingWithdrawal) {
+    // Check no pending withdrawal already exists using raw query to avoid enum issue
+    const existing = await prisma.$queryRaw`
+      SELECT id FROM "WithdrawalRequest" 
+      WHERE "userId" = ${session.user.id} AND status = 'PENDING' 
+      LIMIT 1
+    `
+    if (existing.length > 0) {
       return NextResponse.json({ error: 'You already have a pending withdrawal request' }, { status: 400 })
     }
 
-    const withdrawal = await prisma.withdrawalRequest.create({
-      data: {
-        userId: session.user.id,
-        amount,
-        status: 'PENDING',
-        plaidAccountId: user.plaidAccountId,
-        plaidBankName: user.plaidBankName,
-        plaidAccountMask: user.plaidAccountMask,
-      },
-    })
+    // Create withdrawal using raw query to avoid enum issue
+    const withdrawalId = `wr_${Math.random().toString(36).substring(2, 18)}`
+    await prisma.$executeRaw`
+      INSERT INTO "WithdrawalRequest" ("id", "createdAt", "updatedAt", "userId", "amount", "status", "plaidAccountId", "plaidBankName", "plaidAccountMask")
+      VALUES (${withdrawalId}, NOW(), NOW(), ${session.user.id}, ${amount}, 'PENDING', ${user.plaidAccountId || null}, ${user.plaidBankName || null}, ${user.plaidAccountMask || null})
+    `
 
-    // Mark commissions as withdrawn (up to the requested amount)
+    // Mark commissions as withdrawn
     let remaining = amount
     for (const commission of user.commissions) {
       if (remaining <= 0) break
-      await prisma.referralCommission.update({
-        where: { id: commission.id },
-        data: { status: 'WITHDRAWN', paidOut: true, withdrawalId: withdrawal.id },
-      })
+      await prisma.$executeRaw`
+        UPDATE "ReferralCommission" 
+        SET status = 'WITHDRAWN', "paidOut" = true, "withdrawalId" = ${withdrawalId}
+        WHERE id = ${commission.id}
+      `
       remaining -= commission.amount
     }
 
-    return NextResponse.json({ success: true, withdrawal })
+    return NextResponse.json({ success: true, withdrawal: { id: withdrawalId } })
   }
 
   // ── Disconnect bank ────────────────────────────────────────────────────────
