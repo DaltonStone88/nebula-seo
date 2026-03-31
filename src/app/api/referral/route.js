@@ -149,7 +149,7 @@ export async function POST(req) {
       VALUES (${withdrawalId}, NOW(), NOW(), ${session.user.id}, ${amount}, 'PENDING', ${user.plaidAccountId || null}, ${user.plaidBankName || null}, ${user.plaidAccountMask || null})
     `
 
-    // Mark commissions as withdrawn
+    // Mark commissions as withdrawn up to the requested amount only
     let remaining = amount
     for (const commission of user.commissions) {
       if (remaining <= 0) break
@@ -158,7 +158,7 @@ export async function POST(req) {
         SET status = 'WITHDRAWN', "paidOut" = true, "withdrawalId" = ${withdrawalId}
         WHERE id = ${commission.id}
       `
-      remaining -= commission.amount
+      remaining = Math.round((remaining - commission.amount) * 100) / 100
     }
 
     return NextResponse.json({ success: true, withdrawal: { id: withdrawalId } })
