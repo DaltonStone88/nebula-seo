@@ -255,9 +255,12 @@ export async function POST(req) {
     const periodStart = new Date()
     periodStart.setDate(1)
     periodStart.setHours(0, 0, 0, 0)
-    await prisma.automationPost.deleteMany({
-      where: { businessId, status: 'PENDING', scheduledFor: { gte: periodStart } },
-    })
+    await prisma.$executeRaw`
+      DELETE FROM "AutomationPost" 
+      WHERE "businessId" = ${businessId} 
+      AND status = 'PENDING' 
+      AND "scheduledFor" >= ${periodStart}
+    `
 
     const POST_COUNT = 10
     const schedDates = generateScheduleDates(POST_COUNT)
@@ -322,7 +325,26 @@ export async function POST(req) {
       return postData
     }))
 
-    await prisma.automationPost.createMany({ data: generatedPosts })
+    // Insert posts using raw SQL to avoid enum issues
+    for (const post of generatedPosts) {
+      await prisma.$executeRaw`
+        INSERT INTO "AutomationPost" (
+          "id", "createdAt", "updatedAt", "businessId", "content", "postType", 
+          "keyword", "city", "scheduledFor", "status", "imageUrl", "imageIndex",
+          "offerTitle", "offerCode", "offerUrl", "offerTerms", "offerStart", "offerEnd",
+          "eventTitle", "eventStart", "eventEnd"
+        ) VALUES (
+          ${`ap_${Math.random().toString(36).substring(2, 18)}`},
+          NOW(), NOW(),
+          ${post.businessId}, ${post.content}, ${post.postType},
+          ${post.keyword}, ${post.city}, ${post.scheduledFor},
+          'PENDING', ${post.imageUrl || null}, ${post.imageIndex ?? null},
+          ${post.offerTitle || null}, ${post.offerCode || null}, ${post.offerUrl || null},
+          ${post.offerTerms || null}, ${post.offerStart || null}, ${post.offerEnd || null},
+          ${post.eventTitle || null}, ${post.eventStart || null}, ${post.eventEnd || null}
+        )
+      `
+    }
 
     // Update lastPostGeneratedAt on the business
     await prisma.business.update({
@@ -331,15 +353,15 @@ export async function POST(req) {
     })
 
     // Log automation activity
-    await prisma.automation.create({
-      data: {
-        businessId,
-        type: 'GBP_POST',
-        status: 'SUCCESS',
-        description: `Generated ${POST_COUNT} posts for the month`,
-        details: { count: POST_COUNT, keywords, cities },
-      },
-    })
+    await prisma.$executeRaw`
+      INSERT INTO "Automation" ("id", "createdAt", "businessId", "type", "status", "description", "details")
+      VALUES (
+        ${`auto_${Math.random().toString(36).substring(2, 18)}`},
+        NOW(), ${businessId}, 'GBP_POST', 'SUCCESS',
+        ${`Generated ${POST_COUNT} posts for the month`},
+        ${JSON.stringify({ count: POST_COUNT, keywords, cities })}::jsonb
+      )
+    `
 
     return NextResponse.json({ success: true, count: POST_COUNT })
   } catch (e) {
