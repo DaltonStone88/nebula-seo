@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 
-const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://www.nebulaseo.com'
+
 
 function StatCard({ value, label, color = 'var(--nebula-purple)', prefix = '' }) {
   return (
@@ -93,7 +93,7 @@ export default function Referral() {
     setLoading(false)
   }
 
-  const referralLink = data?.referralCode ? `${BASE_URL}/login?ref=${data.referralCode}` : ''
+  const referralLink = data?.referralCode ? `https://www.nebulaseo.com/login?ref=${data.referralCode}` : ''
 
   const copyLink = () => {
     navigator.clipboard.writeText(referralLink)
