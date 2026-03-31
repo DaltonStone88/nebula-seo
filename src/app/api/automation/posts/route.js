@@ -3,31 +3,31 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
-// GET — fetch posts for a business
 export async function GET(req) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
   const businessId = searchParams.get('businessId')
-  const status = searchParams.get('status') // PENDING, APPROVED, PUBLISHED, etc.
+  const status = searchParams.get('status')
 
   try {
-    const posts = await prisma.automationPost.findMany({
-      where: {
-        business: { userId: session.user.id },
-        ...(businessId && { businessId }),
-        ...(status && { status }),
-      },
-      orderBy: { scheduledFor: 'asc' },
-    })
+    let query = `
+      SELECT ap.* FROM "AutomationPost" ap
+      JOIN "Business" b ON b.id = ap."businessId"
+      WHERE b."userId" = '${session.user.id}'
+    `
+    if (businessId) query += ` AND ap."businessId" = '${businessId}'`
+    if (status) query += ` AND ap.status = '${status}'`
+    query += ` ORDER BY ap."scheduledFor" ASC`
+
+    const posts = await prisma.$queryRawUnsafe(query)
     return NextResponse.json(posts)
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }
 
-// PATCH — update a post (edit content, swap image, approve, reject)
 export async function PATCH(req) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -60,7 +60,6 @@ export async function PATCH(req) {
   }
 }
 
-// DELETE — remove a post
 export async function DELETE(req) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
