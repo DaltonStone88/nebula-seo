@@ -58,7 +58,9 @@ export async function GET(req) {
         plaidBankName: w.plaidBankName, plaidAccountMask: w.plaidAccountMask,
         user: { name: w.userName, email: w.userEmail, plaidAccessToken: w.plaidAccessToken, plaidAccountId: w.plaidAccountId }
       }))
-      const totalOutstanding = users.flatMap(u => u.commissions).filter(c => !c.paidOut).reduce((s, c) => s + c.amount, 0)
+      const totalCommissions = users.flatMap(u => u.commissions).reduce((s, c) => s + c.amount, 0)
+      const totalWithdrawn = allWithdrawals.filter(w => w.status === 'APPROVED' || w.status === 'PAID').reduce((s, w) => s + w.amount, 0)
+      const totalOutstanding = Math.max(0, totalCommissions - totalWithdrawn)
 
       return NextResponse.json({
         stats: {
@@ -74,7 +76,10 @@ export async function GET(req) {
           ...u,
           activeLocations: u.businesses.filter(b => b.status === 'ACTIVE').length,
           mrr: u.businesses.filter(b => b.status === 'ACTIVE').length * 79,
-          outstandingBalance: Math.round(u.commissions.filter(c => !c.paidOut).reduce((s, c) => s + c.amount, 0) * 100) / 100,
+          outstandingBalance: Math.round(Math.max(0,
+            u.commissions.reduce((s, c) => s + c.amount, 0) -
+            allWithdrawals.filter(w => w.userId === u.id && (w.status === 'APPROVED' || w.status === 'PAID')).reduce((s, w) => s + w.amount, 0)
+          ) * 100) / 100,
           hasPendingWithdrawal: allWithdrawals.some(w => w.userId === u.id && w.status === 'PENDING'),
         })),
         withdrawals: pendingWithdrawals,
