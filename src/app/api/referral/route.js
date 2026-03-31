@@ -119,7 +119,7 @@ export async function POST(req) {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       include: {
-        commissions: { where: { status: 'AVAILABLE', paidOut: false } },
+        commissions: { where: { paidOut: false } },
       },
     })
 
