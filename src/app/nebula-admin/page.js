@@ -237,7 +237,7 @@ export default function AdminDash() {
               <StatBox label="New This Month" value={stats.newUsersThisMonth || 0} color="#ffb830" />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 32 }}>
-              <StatBox label="Outstanding Referral Balance" value={(stats.totalOutstandingBalance || 0).toFixed(2)} prefix="$" color="#ff2d9a" />
+              <StatBox label="We Owe (Referral Commissions)" value={(stats.totalOutstandingBalance || 0).toFixed(2)} prefix="$" color="#ff2d9a" />
               <StatBox label="Pending Withdrawals" value={stats.pendingWithdrawals || 0} color="rgba(255,184,48,0.9)" />
               <StatBox label="Churning This Month" value={stats.churnedThisMonth || 0} color="rgba(255,100,100,0.9)" />
             </div>
@@ -266,7 +266,7 @@ export default function AdminDash() {
                     Joined {new Date(u.createdAt).toLocaleDateString()} · {u.activeLocations} location{u.activeLocations !== 1 ? 's' : ''} · ${u.mrr}/mo · {u._count.referrals} referrals
                   </div>
                 </div>
-                {u.outstandingBalance > 0 && <div style={{ fontSize: 12, fontWeight: 700, color: '#ffb830' }}>Owes: ${u.outstandingBalance.toFixed(2)}</div>}
+                {u.outstandingBalance > 0 && <div style={{ fontSize: 12, fontWeight: 700, color: '#ffb830' }}>We owe: ${u.outstandingBalance.toFixed(2)}</div>}
                 {u.hasPendingWithdrawal && <Badge status="PENDING" />}
                 <button onClick={() => setDeleteConfirm(u.id)} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(255,50,50,0.3)', background: 'rgba(255,50,50,0.06)', color: 'rgba(255,100,100,0.8)', cursor: 'pointer', fontSize: 11, fontFamily: "'Syne', sans-serif" }}>Delete</button>
                 {deleteConfirm === u.id && (
@@ -326,7 +326,7 @@ export default function AdminDash() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#ffb830' }}>Total: ${r.totalEarned.toFixed(2)}</div>
-                    <div style={{ fontSize: 11, color: r.availableBalance > 0 ? 'rgba(255,100,100,0.9)' : 'rgba(232,238,255,0.5)' }}>Outstanding: ${r.availableBalance.toFixed(2)}</div>
+                    <div style={{ fontSize: 11, color: r.availableBalance > 0 ? 'rgba(255,184,48,0.9)' : 'rgba(232,238,255,0.5)' }}>We owe: ${r.availableBalance.toFixed(2)}</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
