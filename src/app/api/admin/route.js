@@ -30,12 +30,6 @@ export async function GET(req) {
           commissions: {
             select: { amount: true, paidOut: true }
           },
-          withdrawals: {
-            select: { id: true, amount: true, status: true, createdAt: true,
-              plaidBankName: true, plaidAccountMask: true,
-              user: { select: { name: true, email: true, plaidAccessToken: true, plaidAccountId: true } }
-            }
-          },
           _count: { select: { referrals: true } }
         },
         orderBy: { createdAt: 'desc' }
@@ -52,8 +46,18 @@ export async function GET(req) {
         b.cancelAtPeriodEnd && b.stripeCurrentPeriodEnd && new Date(b.stripeCurrentPeriodEnd) > now
       ).length
 
-      const allWithdrawals = users.flatMap(u => u.withdrawals)
-      const pendingWithdrawals = allWithdrawals.filter(w => w.status === 'PENDING')
+      const allWithdrawals = await prisma.$queryRaw`
+        SELECT w.id, w.amount, w.status, w."createdAt", w."plaidBankName", w."plaidAccountMask", w."userId",
+          u.name as "userName", u.email as "userEmail", u."plaidAccessToken", u."plaidAccountId"
+        FROM "WithdrawalRequest" w
+        JOIN "User" u ON u.id = w."userId"
+        ORDER BY w."createdAt" ASC
+      `
+      const pendingWithdrawals = allWithdrawals.filter(w => w.status === 'PENDING').map(w => ({
+        id: w.id, amount: w.amount, status: w.status, createdAt: w.createdAt,
+        plaidBankName: w.plaidBankName, plaidAccountMask: w.plaidAccountMask,
+        user: { name: w.userName, email: w.userEmail, plaidAccessToken: w.plaidAccessToken, plaidAccountId: w.plaidAccountId }
+      }))
       const totalOutstanding = users.flatMap(u => u.commissions).filter(c => !c.paidOut).reduce((s, c) => s + c.amount, 0)
 
       return NextResponse.json({
@@ -71,7 +75,7 @@ export async function GET(req) {
           activeLocations: u.businesses.filter(b => b.status === 'ACTIVE').length,
           mrr: u.businesses.filter(b => b.status === 'ACTIVE').length * 79,
           outstandingBalance: Math.round(u.commissions.filter(c => !c.paidOut).reduce((s, c) => s + c.amount, 0) * 100) / 100,
-          hasPendingWithdrawal: u.withdrawals.some(w => w.status === 'PENDING'),
+          hasPendingWithdrawal: allWithdrawals.some(w => w.userId === u.id && w.status === 'PENDING'),
         })),
         withdrawals: pendingWithdrawals,
       })
