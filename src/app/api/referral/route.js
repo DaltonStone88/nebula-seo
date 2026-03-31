@@ -78,7 +78,7 @@ export async function POST(req) {
 
     try {
       // Exchange public token for access token via Plaid API
-      const plaidRes = await fetch('https://production.plaid.com/item/public_token/exchange', {
+      const plaidRes = await fetch('https://sandbox.plaid.com/item/public_token/exchange', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
