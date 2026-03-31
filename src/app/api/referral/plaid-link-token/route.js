@@ -7,7 +7,7 @@ export async function POST() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    const res = await fetch('https://production.plaid.com/link/token/create', {
+    const res = await fetch('https://sandbox.plaid.com/link/token/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
