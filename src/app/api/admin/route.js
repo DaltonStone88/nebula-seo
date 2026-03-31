@@ -17,7 +17,7 @@ export async function GET(req) {
 
   // ── Overview stats ─────────────────────────────────────────────────────────
   if (action === 'overview') {
-    const [users, businesses, withdrawals, commissions] = await Promise.all([
+    const [users, withdrawals, commissions] = await Promise.all([
       prisma.user.findMany({
         select: {
           id: true, name: true, email: true, createdAt: true, plan: true,
@@ -31,8 +31,8 @@ export async function GET(req) {
             }
           },
           commissions: {
-            where: { status: 'AVAILABLE', paidOut: false },
-            select: { amount: true }
+            where: { paidOut: false },
+            select: { amount: true, status: true }
           },
           withdrawals: {
             where: { status: 'PENDING' },
@@ -42,7 +42,6 @@ export async function GET(req) {
         },
         orderBy: { createdAt: 'desc' }
       }),
-      prisma.business.count({ where: { status: 'ACTIVE' } }),
       prisma.withdrawalRequest.findMany({
         where: { status: 'PENDING' },
         include: {
@@ -52,22 +51,20 @@ export async function GET(req) {
       }),
       prisma.referralCommission.aggregate({
         _sum: { amount: true },
-        where: { status: 'AVAILABLE', paidOut: false }
+        where: { paidOut: false },
       }),
     ])
 
     const activeBusinesses = users.flatMap(u => u.businesses.filter(b => b.status === 'ACTIVE'))
     const mrr = activeBusinesses.length * 79
+    const now = new Date()
     const newThisMonth = users.filter(u => {
       const d = new Date(u.createdAt)
-      const now = new Date()
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
     }).length
-    const churnedThisMonth = users.flatMap(u => u.businesses).filter(b => {
-      return b.cancelAtPeriodEnd && b.stripeCurrentPeriodEnd &&
-        new Date(b.stripeCurrentPeriodEnd) > new Date() // cancelling but not yet ended
-    }).length
-
+    const churnedThisMonth = users.flatMap(u => u.businesses).filter(b =>
+      b.cancelAtPeriodEnd && b.stripeCurrentPeriodEnd && new Date(b.stripeCurrentPeriodEnd) > now
+    ).length
     const totalOutstandingBalance = commissions._sum.amount || 0
 
     return NextResponse.json({
@@ -84,7 +81,7 @@ export async function GET(req) {
         ...u,
         activeLocations: u.businesses.filter(b => b.status === 'ACTIVE').length,
         mrr: u.businesses.filter(b => b.status === 'ACTIVE').length * 79,
-        outstandingBalance: Math.round(u.commissions.reduce((s, c) => s + c.amount, 0) * 100) / 100,
+        outstandingBalance: Math.round(u.commissions.filter(c => !c.paidOut).reduce((s, c) => s + c.amount, 0) * 100) / 100,
         hasPendingWithdrawal: u.withdrawals.length > 0,
       })),
       withdrawals,
@@ -134,21 +131,21 @@ export async function GET(req) {
   if (action === 'automation') {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     const businesses = await prisma.business.findMany({
-      where: { status: 'ACTIVE' },
       select: {
         id: true, name: true, lastPostGeneratedAt: true, billingDay: true,
-        targetKeywords: true, targetCities: true,
+        targetKeywords: true, targetCities: true, status: true,
         user: { select: { email: true } },
         _count: { select: { automationPosts: true } }
       }
     })
-    const flagged = businesses.filter(b => {
+    const active = businesses.filter(b => b.status === 'ACTIVE')
+    const flagged = active.filter(b => {
       const noPostsRecently = !b.lastPostGeneratedAt || new Date(b.lastPostGeneratedAt) < thirtyDaysAgo
       const noKeywords = !b.targetKeywords?.length
       const noCities = !b.targetCities?.length
       return noPostsRecently || noKeywords || noCities
     })
-    return NextResponse.json({ businesses, flagged })
+    return NextResponse.json({ businesses: active, flagged })
   }
 
   // ── Fetch Plaid account/routing for a withdrawal ───────────────────────────
