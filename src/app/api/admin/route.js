@@ -194,7 +194,6 @@ export async function POST(req) {
     }
     if (action === 'reject_withdrawal') {
       await prisma.withdrawalRequest.update({ where: { id: withdrawalId }, data: { status: 'REJECTED', adminNote } })
-      await prisma.referralCommission.updateMany({ where: { withdrawalId }, data: { status: 'AVAILABLE', paidOut: false, withdrawalId: null } })
       return NextResponse.json({ success: true })
     }
     if (action === 'delete_user') {
