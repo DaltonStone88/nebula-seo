@@ -215,7 +215,7 @@ export default function AddBusiness() {
 
   return (
     <div>
-      <div style={{ padding: '20px 36px', borderBottom: '1px solid var(--border)', background: 'rgba(6,6,18,0.5)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50, display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div style={{ padding: '20px 36px', borderBottom: '1px solid var(--border)', background: 'rgba(6,6,18,0.5)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 50, , display: 'flex', alignItems: 'center', gap: 16 }}>
         {step < 5 && (
           <button onClick={() => step === 1 ? router.back() : setStep(s => s - 1)} style={{ background: 'none', border: 'none', color: 'var(--dim)', cursor: 'pointer', fontSize: 20, padding: 0, lineHeight: 1 }}>←</button>
         )}
