@@ -108,17 +108,27 @@ export async function GET(req) {
   if (action === 'referrals') {
     try {
       const commissions = await prisma.referralCommission.findMany({
-        include: { referrer: { select: { name: true, email: true } } },
+        include: { referrer: { select: { name: true, email: true, id: true } } },
         orderBy: { createdAt: 'desc' },
         take: 100,
       })
+      const withdrawals = await prisma.$queryRaw`
+        SELECT "userId", amount, status FROM "WithdrawalRequest"
+        WHERE status IN ('APPROVED', 'PAID')
+      `
       const byReferrer = {}
       for (const c of commissions) {
         const key = c.referrerId
         if (!byReferrer[key]) byReferrer[key] = { referrer: c.referrer, totalEarned: 0, availableBalance: 0, commissions: [] }
         byReferrer[key].totalEarned += c.amount
-        if (!c.paidOut) byReferrer[key].availableBalance += c.amount
+        byReferrer[key].availableBalance += c.amount
         byReferrer[key].commissions.push(c)
+      }
+      // Deduct approved/paid withdrawals
+      for (const w of withdrawals) {
+        if (byReferrer[w.userId]) {
+          byReferrer[w.userId].availableBalance = Math.max(0, byReferrer[w.userId].availableBalance - Number(w.amount))
+        }
       }
       return NextResponse.json(Object.values(byReferrer))
     } catch (e) {
